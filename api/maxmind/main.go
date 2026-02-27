@@ -131,21 +131,54 @@ func main() {
 }
 
 func ipHandler(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	// 允许跨域
 	writer.Header().Set("Access-Control-Allow-Origin", "*")
 
 	ipString := strings.TrimPrefix(request.URL.Path, "/")
-	if ipString == "" || ipString == "favicon.ico" {
-		writer.WriteHeader(http.StatusBadRequest)
-		_, _ = writer.Write([]byte(`{"error": "Please provide an IP address"}`))
+
+	if ipString == "" {
+		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		writer.WriteHeader(http.StatusOK)
+		_, _ = writer.Write([]byte("ok"))
 		return
 	}
 
+	if ipString == "favicon.ico" {
+		writer.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// 统一 JSON 响应
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	// 校验 IP 合法
 	ipAddress := net.ParseIP(ipString)
 	if ipAddress == nil {
 		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte(`{"error": "Invalid IP format"}`))
 		return
+	}
+
+	// 获取并解析 ?lang= 参数 默认英文
+	queryLang := strings.ToLower(request.URL.Query().Get("lang"))
+	targetLang := "en"
+	switch queryLang {
+	case "cn", "zh", "zh-cn", "zh_cn":
+		targetLang = "zh-CN"
+	case "pt", "pt-br", "pt_br":
+		targetLang = "pt-BR"
+	default:
+		if queryLang != "" {
+			targetLang = queryLang
+		}
+	}
+
+	// 辅助提取对应语言
+	getName := func(names map[string]string) string {
+		if name, exists := names[targetLang]; exists && name != "" {
+			return name
+		}
+		return names["en"]
 	}
 
 	var cityRecord CityRecord
@@ -168,24 +201,24 @@ func ipHandler(writer http.ResponseWriter, request *http.Request) {
 	// 填充大洲与国家
 	if cityRecord.Continent.Code != "" {
 		apiResponse.ContinentCode = cityRecord.Continent.Code
-		apiResponse.Continent = cityRecord.Continent.Names["en"]
+		apiResponse.Continent = getName(cityRecord.Continent.Names)
 	}
 	if cityRecord.Country.IsoCode != "" {
 		apiResponse.CountryCode = cityRecord.Country.IsoCode
-		apiResponse.Country = cityRecord.Country.Names["en"]
+		apiResponse.Country = getName(cityRecord.Country.Names)
 	}
 	if cityRecord.RegisteredCountry.IsoCode != "" {
 		apiResponse.RegisteredCountryCode = cityRecord.RegisteredCountry.IsoCode
-		apiResponse.RegisteredCountry = cityRecord.RegisteredCountry.Names["en"]
+		apiResponse.RegisteredCountry = getName(cityRecord.RegisteredCountry.Names)
 	}
 
 	// 填充行政区划
 	if len(cityRecord.Subdivisions) > 0 {
 		apiResponse.RegionCode = cityRecord.Subdivisions[0].IsoCode
-		apiResponse.Region = cityRecord.Subdivisions[0].Names["en"]
+		apiResponse.Region = getName(cityRecord.Subdivisions[0].Names)
 	}
-	if cityRecord.City.Names["en"] != "" {
-		apiResponse.City = cityRecord.City.Names["en"]
+	if len(cityRecord.City.Names) > 0 {
+		apiResponse.City = getName(cityRecord.City.Names)
 	}
 	if cityRecord.Postal.Code != "" {
 		apiResponse.PostalCode = cityRecord.Postal.Code
