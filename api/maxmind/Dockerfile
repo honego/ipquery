@@ -4,7 +4,7 @@ FROM --platform=$TARGETPLATFORM alpine:3.23.3@sha256:25109184c71bdad752c8312a862
 LABEL org.opencontainers.image.authors="honeok <i@honeok.com>"
 ARG TARGETARCH TARGETVARIANT
 WORKDIR /app
-COPY --chmod=755 maxmind-$TARGETARCH$TARGETVARIANT ./
+COPY --chmod=755 maxmind-$TARGETARCH$TARGETVARIANT ./maxmind
 RUN set -ex \
     && apk add --no-cache --update curl tzdata
 ENV TZ=Asia/Shanghai
