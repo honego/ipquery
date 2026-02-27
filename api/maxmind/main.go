@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -78,6 +79,7 @@ var (
 	asnDatabase   *maxminddb.Reader
 	timeZoneCache sync.Map     // 时区缓存
 	databaseMutex sync.RWMutex // 读写锁
+	dbDir         = "./db"
 )
 
 // 下载文件的通用函数
@@ -127,8 +129,10 @@ func getCachedTimeLocation(tzName string) (*time.Location, error) {
 func updateDatabases() {
 	log.Println("Database update begins.")
 
-	cityTmp := "./City.mmdb.tmp"
-	asnTmp := "./ASN.mmdb.tmp"
+	cityTmp := filepath.Join(dbDir, "City.mmdb.tmp")
+	asnTmp := filepath.Join(dbDir, "ASN.mmdb.tmp")
+	cityFinal := filepath.Join(dbDir, "City.mmdb")
+	asnFinal := filepath.Join(dbDir, "ASN.mmdb")
 
 	// 下载新文件到临时路径
 	if err := downloadFile(cityTmp, "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb"); err != nil {
@@ -169,8 +173,8 @@ func updateDatabases() {
 		oldAsnDB.Close()
 	}
 
-	_ = os.Rename(cityTmp, "./City.mmdb")
-	_ = os.Rename(asnTmp, "./ASN.mmdb")
+	_ = os.Rename(cityTmp, cityFinal)
+	_ = os.Rename(asnTmp, asnFinal)
 
 	log.Println("Database update complete.")
 }
@@ -206,17 +210,25 @@ func startCronJob() {
 func main() {
 	var err error
 
-	ensureDatabaseExists("./City.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb")
-	ensureDatabaseExists("./ASN.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/ASN.mmdb")
+	// 确保 db 目录存在
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		log.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	cityPath := filepath.Join(dbDir, "City.mmdb")
+	asnPath := filepath.Join(dbDir, "ASN.mmdb")
+
+	ensureDatabaseExists(cityPath, "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb")
+	ensureDatabaseExists(asnPath, "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/ASN.mmdb")
 
 	// 加载数据库
-	cityDatabase, err = maxminddb.Open("./City.mmdb")
+	cityDatabase, err = maxminddb.Open(cityPath)
 	if err != nil {
 		log.Fatalf("Error opening City.mmdb: %v", err)
 	}
 	defer cityDatabase.Close()
 
-	asnDatabase, err = maxminddb.Open("./ASN.mmdb")
+	asnDatabase, err = maxminddb.Open(asnPath)
 	if err != nil {
 		log.Fatalf("Error opening ASN.mmdb: %v", err)
 	}
