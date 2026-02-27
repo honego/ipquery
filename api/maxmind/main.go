@@ -165,8 +165,20 @@ func ipHandler(writer http.ResponseWriter, request *http.Request) {
 	switch queryLang {
 	case "cn", "zh", "zh-cn", "zh_cn":
 		targetLang = "zh-CN"
-	case "pt", "pt-br", "pt_br":
+	case "pt", "br", "pt-br", "pt_br":
 		targetLang = "pt-BR"
+	case "de", "ger":
+		targetLang = "de"
+	case "es", "spa":
+		targetLang = "es"
+	case "fr", "fre":
+		targetLang = "fr"
+	case "ja", "jp", "jpn":
+		targetLang = "ja"
+	case "ru", "rus":
+		targetLang = "ru"
+	case "en", "eng":
+		targetLang = "en"
 	default:
 		if queryLang != "" {
 			targetLang = queryLang
