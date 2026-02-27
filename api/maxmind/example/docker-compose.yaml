@@ -1,0 +1,13 @@
+---
+services:
+  maxmind:
+    image: honeok/maxmind
+    container_name: maxmind
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - $PWD/db:/app/db
+    network_mode: bridge
