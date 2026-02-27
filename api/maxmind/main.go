@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/oschwald/maxminddb-golang"
@@ -73,8 +74,9 @@ type FlatResponse struct {
 }
 
 var (
-	cityDatabase *maxminddb.Reader
-	asnDatabase  *maxminddb.Reader
+	cityDatabase  *maxminddb.Reader
+	asnDatabase   *maxminddb.Reader
+	timeZoneCache sync.Map // 时区缓存
 )
 
 // 下载文件的通用函数
@@ -104,6 +106,20 @@ func ensureDatabaseExists(fileName string, fileUrl string) {
 		}
 		log.Printf("Successfully downloaded %s\n", fileName)
 	}
+}
+
+// 并发缓存的获取时区
+func getCachedTimeLocation(tzName string) (*time.Location, error) {
+	// 从内存读取
+	if loc, ok := timeZoneCache.Load(tzName); ok {
+		return loc.(*time.Location), nil
+	}
+	// 内存没有则去系统读取并存入缓存
+	loc, err := time.LoadLocation(tzName)
+	if err == nil {
+		timeZoneCache.Store(tzName, loc)
+	}
+	return loc, err
 }
 
 func main() {
@@ -193,6 +209,7 @@ func ipHandler(writer http.ResponseWriter, request *http.Request) {
 		return names["en"]
 	}
 
+	// 并发读取
 	var cityRecord CityRecord
 	_ = cityDatabase.Lookup(ipAddress, &cityRecord)
 
@@ -248,10 +265,10 @@ func ipHandler(writer http.ResponseWriter, request *http.Request) {
 		apiResponse.AccuracyRadius = &accuracyRadius
 	}
 
-	// 填充时区和动态计算 Offset
+	// 填充时区和动态计算
 	if cityRecord.Location.TimeZone != "" {
 		apiResponse.TimeZone = cityRecord.Location.TimeZone
-		timeLocation, err := time.LoadLocation(cityRecord.Location.TimeZone)
+		timeLocation, err := getCachedTimeLocation(cityRecord.Location.TimeZone)
 		if err == nil {
 			_, timeOffset := time.Now().In(timeLocation).Zone()
 			apiResponse.Offset = &timeOffset
