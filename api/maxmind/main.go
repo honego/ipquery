@@ -73,147 +73,147 @@ type FlatResponse struct {
 }
 
 var (
-	cityDB *maxminddb.Reader
-	asnDB  *maxminddb.Reader
+	cityDatabase *maxminddb.Reader
+	asnDatabase  *maxminddb.Reader
 )
 
 // 下载文件的通用函数
-func downloadFile(filepath string, url string) error {
-	log.Printf("Downloading %s.\n", filepath)
-	resp, err := http.Get(url)
+func downloadFile(filePath string, fileUrl string) error {
+	log.Printf("Downloading %s.\n", filePath)
+	response, err := http.Get(fileUrl)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	out, err := os.Create(filepath)
+	outputFile, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer outputFile.Close()
 
-	_, err = io.Copy(out, resp.Body)
+	_, err = io.Copy(outputFile, response.Body)
 	return err
 }
 
-func ensureDBExists(filename string, url string) {
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		log.Printf("Database %s not found. Starting download.\n", filename)
-		if err := downloadFile(filename, url); err != nil {
-			log.Fatalf("Failed to download %s: %v", filename, err)
+func ensureDatabaseExists(fileName string, fileUrl string) {
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		log.Printf("Database %s not found. Starting download.\n", fileName)
+		if err := downloadFile(fileName, fileUrl); err != nil {
+			log.Fatalf("Failed to download %s: %v", fileName, err)
 		}
-		log.Printf("Successfully downloaded %s\n", filename)
+		log.Printf("Successfully downloaded %s\n", fileName)
 	}
 }
 
 func main() {
 	var err error
 
-	ensureDBExists("./City.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb")
-	ensureDBExists("./ASN.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/ASN.mmdb")
+	ensureDatabaseExists("./City.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb")
+	ensureDatabaseExists("./ASN.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/ASN.mmdb")
 
 	// 加载数据库
-	cityDB, err = maxminddb.Open("./City.mmdb")
+	cityDatabase, err = maxminddb.Open("./City.mmdb")
 	if err != nil {
 		log.Fatalf("Error opening City.mmdb: %v", err)
 	}
-	defer cityDB.Close()
+	defer cityDatabase.Close()
 
-	asnDB, err = maxminddb.Open("./ASN.mmdb")
+	asnDatabase, err = maxminddb.Open("./ASN.mmdb")
 	if err != nil {
 		log.Fatalf("Error opening ASN.mmdb: %v", err)
 	}
-	defer asnDB.Close()
+	defer asnDatabase.Close()
 
 	http.HandleFunc("/", ipHandler)
 	log.Println("maxmind query interface is running on port: 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func ipHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+func ipHandler(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.Header().Set("Access-Control-Allow-Origin", "*")
 
-	ipStr := strings.TrimPrefix(r.URL.Path, "/")
-	if ipStr == "" || ipStr == "favicon.ico" {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error": "Please provide an IP address"}`))
+	ipString := strings.TrimPrefix(request.URL.Path, "/")
+	if ipString == "" || ipString == "favicon.ico" {
+		writer.WriteHeader(http.StatusBadRequest)
+		_, _ = writer.Write([]byte(`{"error": "Please provide an IP address"}`))
 		return
 	}
 
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error": "Invalid IP format"}`))
+	ipAddress := net.ParseIP(ipString)
+	if ipAddress == nil {
+		writer.WriteHeader(http.StatusBadRequest)
+		_, _ = writer.Write([]byte(`{"error": "Invalid IP format"}`))
 		return
 	}
 
 	var cityRecord CityRecord
-	_ = cityDB.Lookup(ip, &cityRecord)
+	_ = cityDatabase.Lookup(ipAddress, &cityRecord)
 
 	var asnRecord ASNRecord
-	_ = asnDB.Lookup(ip, &asnRecord)
+	_ = asnDatabase.Lookup(ipAddress, &asnRecord)
 
-	res := FlatResponse{
-		IP: ip.String(),
+	apiResponse := FlatResponse{
+		IP: ipAddress.String(),
 	}
 
 	// 填充 ASN
 	if asnRecord.AutonomousSystemNumber != 0 {
-		asn := asnRecord.AutonomousSystemNumber
-		res.ASN = &asn
-		res.Org = asnRecord.AutonomousSystemOrganization
+		asnValue := asnRecord.AutonomousSystemNumber
+		apiResponse.ASN = &asnValue
+		apiResponse.Org = asnRecord.AutonomousSystemOrganization
 	}
 
 	// 填充大洲与国家
 	if cityRecord.Continent.Code != "" {
-		res.ContinentCode = cityRecord.Continent.Code
-		res.Continent = cityRecord.Continent.Names["en"]
+		apiResponse.ContinentCode = cityRecord.Continent.Code
+		apiResponse.Continent = cityRecord.Continent.Names["en"]
 	}
 	if cityRecord.Country.IsoCode != "" {
-		res.CountryCode = cityRecord.Country.IsoCode
-		res.Country = cityRecord.Country.Names["en"]
+		apiResponse.CountryCode = cityRecord.Country.IsoCode
+		apiResponse.Country = cityRecord.Country.Names["en"]
 	}
 	if cityRecord.RegisteredCountry.IsoCode != "" {
-		res.RegisteredCountryCode = cityRecord.RegisteredCountry.IsoCode
-		res.RegisteredCountry = cityRecord.RegisteredCountry.Names["en"]
+		apiResponse.RegisteredCountryCode = cityRecord.RegisteredCountry.IsoCode
+		apiResponse.RegisteredCountry = cityRecord.RegisteredCountry.Names["en"]
 	}
 
 	// 填充行政区划
 	if len(cityRecord.Subdivisions) > 0 {
-		res.RegionCode = cityRecord.Subdivisions[0].IsoCode
-		res.Region = cityRecord.Subdivisions[0].Names["en"]
+		apiResponse.RegionCode = cityRecord.Subdivisions[0].IsoCode
+		apiResponse.Region = cityRecord.Subdivisions[0].Names["en"]
 	}
 	if cityRecord.City.Names["en"] != "" {
-		res.City = cityRecord.City.Names["en"]
+		apiResponse.City = cityRecord.City.Names["en"]
 	}
 	if cityRecord.Postal.Code != "" {
-		res.PostalCode = cityRecord.Postal.Code
+		apiResponse.PostalCode = cityRecord.Postal.Code
 	}
 
 	// 填充坐标
 	if cityRecord.Location.Latitude != 0 || cityRecord.Location.Longitude != 0 {
-		lat := cityRecord.Location.Latitude
-		lon := cityRecord.Location.Longitude
-		res.Latitude = &lat
-		res.Longitude = &lon
+		latitude := cityRecord.Location.Latitude
+		longitude := cityRecord.Location.Longitude
+		apiResponse.Latitude = &latitude
+		apiResponse.Longitude = &longitude
 	}
 	if cityRecord.Location.AccuracyRadius != 0 {
-		ar := cityRecord.Location.AccuracyRadius
-		res.AccuracyRadius = &ar
+		accuracyRadius := cityRecord.Location.AccuracyRadius
+		apiResponse.AccuracyRadius = &accuracyRadius
 	}
 
 	// 填充时区和动态计算 Offset
 	if cityRecord.Location.TimeZone != "" {
-		res.TimeZone = cityRecord.Location.TimeZone
-		loc, err := time.LoadLocation(cityRecord.Location.TimeZone)
+		apiResponse.TimeZone = cityRecord.Location.TimeZone
+		timeLocation, err := time.LoadLocation(cityRecord.Location.TimeZone)
 		if err == nil {
-			_, offset := time.Now().In(loc).Zone()
-			res.Offset = &offset
+			_, timeOffset := time.Now().In(timeLocation).Zone()
+			apiResponse.Offset = &timeOffset
 		}
 	}
 
-	encoder := json.NewEncoder(w)
+	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "  ")
-	_ = encoder.Encode(res)
+	_ = encoder.Encode(apiResponse)
 }
