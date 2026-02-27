@@ -76,7 +76,8 @@ type FlatResponse struct {
 var (
 	cityDatabase  *maxminddb.Reader
 	asnDatabase   *maxminddb.Reader
-	timeZoneCache sync.Map // 时区缓存
+	timeZoneCache sync.Map     // 时区缓存
+	databaseMutex sync.RWMutex // 读写锁
 )
 
 // 下载文件的通用函数
@@ -122,6 +123,86 @@ func getCachedTimeLocation(tzName string) (*time.Location, error) {
 	return loc, err
 }
 
+// 热重载更新数据库
+func updateDatabases() {
+	log.Println("Database update begins.")
+
+	cityTmp := "./City.mmdb.tmp"
+	asnTmp := "./ASN.mmdb.tmp"
+
+	// 下载新文件到临时路径
+	if err := downloadFile(cityTmp, "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb"); err != nil {
+		log.Printf("Failed to download new City DB: %v\n", err)
+		return
+	}
+	if err := downloadFile(asnTmp, "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/ASN.mmdb"); err != nil {
+		log.Printf("Failed to download new ASN DB: %v\n", err)
+		return
+	}
+
+	// 尝试打开新数据库 验证文件完整性和可用性
+	newCityDB, err := maxminddb.Open(cityTmp)
+	if err != nil {
+		log.Printf("Failed to open newly downloaded City DB: %v\n", err)
+		return
+	}
+	newAsnDB, err := maxminddb.Open(asnTmp)
+	if err != nil {
+		log.Printf("Failed to open newly downloaded ASN DB: %v\n", err)
+		newCityDB.Close()
+		return
+	}
+
+	// 获取写锁
+	databaseMutex.Lock()
+	oldCityDB := cityDatabase
+	oldAsnDB := asnDatabase
+	cityDatabase = newCityDB
+	asnDatabase = newAsnDB
+	databaseMutex.Unlock()
+
+	// 释放锁安全关闭旧的数据库句柄
+	if oldCityDB != nil {
+		oldCityDB.Close()
+	}
+	if oldAsnDB != nil {
+		oldAsnDB.Close()
+	}
+
+	_ = os.Rename(cityTmp, "./City.mmdb")
+	_ = os.Rename(asnTmp, "./ASN.mmdb")
+
+	log.Println("Database update complete.")
+}
+
+// 定时任务调度器
+func startCronJob() {
+	go func() {
+		for {
+			now := time.Now().UTC()
+			// 计算到下个周日的天数
+			daysUntilSunday := int(time.Sunday - now.Weekday())
+			if daysUntilSunday < 0 {
+				daysUntilSunday += 7
+			}
+
+			// 计算下个周日 UTC 0:00:00 的精准时间
+			nextSunday := time.Date(now.Year(), now.Month(), now.Day()+daysUntilSunday, 0, 0, 0, 0, time.UTC)
+
+			if nextSunday.Before(now) || nextSunday.Equal(now) {
+				nextSunday = nextSunday.AddDate(0, 0, 7)
+			}
+
+			sleepDuration := nextSunday.Sub(now)
+			log.Printf("Next database update scheduled in %v (at %v UTC)\n", sleepDuration, nextSunday)
+
+			time.Sleep(sleepDuration)
+
+			updateDatabases()
+		}
+	}()
+}
+
 func main() {
 	var err error
 
@@ -140,6 +221,9 @@ func main() {
 		log.Fatalf("Error opening ASN.mmdb: %v", err)
 	}
 	defer asnDatabase.Close()
+
+	// 启动后台定时更新任务
+	startCronJob()
 
 	http.HandleFunc("/", ipHandler)
 	log.Println("maxmind query interface is running on port: 8080")
@@ -209,12 +293,14 @@ func ipHandler(writer http.ResponseWriter, request *http.Request) {
 		return names["en"]
 	}
 
-	// 并发读取
+	// 使用共享读锁包围读取操作 保障数据库更新时的内存安全
+	databaseMutex.RLock()
 	var cityRecord CityRecord
 	_ = cityDatabase.Lookup(ipAddress, &cityRecord)
 
 	var asnRecord ASNRecord
 	_ = asnDatabase.Lookup(ipAddress, &asnRecord)
+	databaseMutex.RUnlock()
 
 	apiResponse := FlatResponse{
 		IP: ipAddress.String(),
