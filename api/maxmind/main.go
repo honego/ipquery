@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -50,33 +52,24 @@ type ASNRecord struct {
 
 // API 输出格式
 type FlatResponse struct {
-	// 基础网络信息
-	IP  string `json:"ip"`
-	ASN *uint  `json:"asn,omitempty"`
-	Org string `json:"org,omitempty"`
-
-	// 大洲与国家信息
-	ContinentCode         string `json:"continent_code,omitempty"`
-	Continent             string `json:"continent,omitempty"`
-	CountryCode           string `json:"country_code,omitempty"`
-	Country               string `json:"country,omitempty"`
-	RegisteredCountryCode string `json:"registered_country_code,omitempty"`
-	RegisteredCountry     string `json:"registered_country,omitempty"`
-
-	// 省市行政区划
-	RegionCode string `json:"region_code,omitempty"`
-	Region     string `json:"region,omitempty"`
-	City       string `json:"city,omitempty"`
-	PostalCode string `json:"postal_code,omitempty"`
-
-	// 坐标与精度
-	Longitude      *float64 `json:"longitude,omitempty"`
-	Latitude       *float64 `json:"latitude,omitempty"`
-	AccuracyRadius *uint16  `json:"accuracy_radius,omitempty"`
-
-	// 时区信息
-	Offset   *int   `json:"offset,omitempty"`
-	TimeZone string `json:"time_zone,omitempty"`
+	IP                    string   `json:"ip"`
+	ASN                   *uint    `json:"asn,omitempty"`
+	Org                   string   `json:"org,omitempty"`
+	ContinentCode         string   `json:"continent_code,omitempty"`
+	Continent             string   `json:"continent,omitempty"`
+	CountryCode           string   `json:"country_code,omitempty"`
+	Country               string   `json:"country,omitempty"`
+	RegisteredCountryCode string   `json:"registered_country_code,omitempty"`
+	RegisteredCountry     string   `json:"registered_country,omitempty"`
+	RegionCode            string   `json:"region_code,omitempty"`
+	Region                string   `json:"region,omitempty"`
+	City                  string   `json:"city,omitempty"`
+	PostalCode            string   `json:"postal_code,omitempty"`
+	Longitude             *float64 `json:"longitude,omitempty"`
+	Latitude              *float64 `json:"latitude,omitempty"`
+	AccuracyRadius        *uint16  `json:"accuracy_radius,omitempty"`
+	Offset                *int     `json:"offset,omitempty"`
+	TimeZone              string   `json:"time_zone,omitempty"`
 }
 
 var (
@@ -84,8 +77,42 @@ var (
 	asnDB  *maxminddb.Reader
 )
 
+// 下载文件的通用函数
+func downloadFile(filepath string, url string) error {
+	log.Printf("Downloading %s.\n", filepath)
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func ensureDBExists(filename string, url string) {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		log.Printf("Database %s not found. Starting download.\n", filename)
+		if err := downloadFile(filename, url); err != nil {
+			log.Fatalf("Failed to download %s: %v", filename, err)
+		}
+		log.Printf("Successfully downloaded %s\n", filename)
+	}
+}
+
 func main() {
 	var err error
+
+	ensureDBExists("./City.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/City.mmdb")
+	ensureDBExists("./ASN.mmdb", "https://github.com/xjasonlyu/maxmind-geoip/releases/latest/download/ASN.mmdb")
+
+	// 加载数据库
 	cityDB, err = maxminddb.Open("./City.mmdb")
 	if err != nil {
 		log.Fatalf("Error opening City.mmdb: %v", err)
