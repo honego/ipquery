@@ -98,14 +98,13 @@ curl() {
 
 is_in_china() {
     if [ -z "$COUNTRY" ]; then
-        # www.cloudflare.com / dash.cloudflare.com 国内访问的是美国服务器，而且部分地区被墙
+        # www.cloudflare.com / dash.cloudflare.com 国内访问的是美国服务器 而且部分地区被墙
         # 没有ipv6 www.visa.cn
         # 没有ipv6 www.bose.cn
         # 没有ipv6 www.garmin.com.cn
         # 备用 www.prologis.cn
         # 备用 www.autodesk.com.cn
         # 备用 www.keysight.com.cn
-
         if ! COUNTRY="$(curl -Ls http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .)"; then
             die "Can not get location."
         fi
