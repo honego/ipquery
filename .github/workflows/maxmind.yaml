@@ -1,0 +1,215 @@
+---
+name: "MaxMind CI"
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - "api/maxmind/VERSION"
+  schedule:
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOCKERHUB_REPO: ${{ secrets.DOCKER_USERNAME || github.repository_owner }}/maxmind
+  WORK_DIR: api/maxmind
+
+jobs:
+  release:
+    name: "Build binary"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { goos: linux, goarch: "386" }
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm, goarm: "6" }
+          - { goos: linux, goarch: arm, goarm: "7" }
+          - { goos: linux, goarch: arm64 }
+          - { goos: linux, goarch: riscv64 }
+          - { goos: linux, goarch: s390x }
+          - { goos: linux, goarch: ppc64le }
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      GOARM: ${{ matrix.goarm }}
+      CGO_ENABLED: 0
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: "Setup Go"
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ env.WORK_DIR }}/go.mod
+          check-latest: true
+          cache-dependency-path: ${{ env.WORK_DIR }}/go.sum
+
+      - name: "Download gomod"
+        working-directory: ${{ env.WORK_DIR }}
+        run: go mod download
+
+      - name: "Build maxmind"
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          set -eEuxo pipefail
+          pushd dist || exit 1
+          PROJECT_NAME="${PWD##*/}"
+          if [ -n "$GOARM" ]; then
+            OUTPUT_NAME="${PROJECT_NAME}-${GOOS}-${GOARCH}v${GOARM}"
+          else
+            OUTPUT_NAME="${PROJECT_NAME}-${GOOS}-${GOARCH}"
+          fi
+          echo "OUTPUT_NAME=$OUTPUT_NAME" >> "$GITHUB_ENV"
+          echo "GOOS: $GOOS, GOARCH: $GOARCH, GOARM: $GOARM"
+          go build -v -trimpath -o dist/$OUTPUT_NAME -ldflags="-s -w -buildid="
+          popd || exit 1
+
+      - name: "Package assets"
+        working-directory: ${{ env.WORK_DIR }}/dist
+        shell: bash
+        run: |
+          set -eEuxo pipefail
+          touch -mt "$(date +%Y01010000)" -- *
+
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.OUTPUT_NAME }}
+          path: ${{ env.WORK_DIR }}/dist/${{ env.OUTPUT_NAME }}
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    name: "Build image"
+    runs-on: ubuntu-latest
+    needs: ["release"]
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - linux/386
+          - linux/amd64
+          - linux/arm/v6
+          - linux/arm/v7
+          - linux/arm64
+          - linux/ppc64le
+          - linux/riscv64
+          - linux/s390x
+    outputs:
+      maxmind_version: ${{ steps.vers.outputs.maxmind_version }}
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      - name: "Prepare build var"
+        id: vers
+        run: |
+          platform_pair=$(awk -F/ '{print $1"-"$2$3}' <<< ${{ matrix.platform }})
+          echo "platform_pair=$platform_pair" >> "$GITHUB_OUTPUT"
+          echo "maxmind_version=$(cat ${{ env.WORK_DIR }}/VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: "Download binary"
+        uses: actions/download-artifact@v7
+        with:
+          name: maxmind-${{ steps.vers.outputs.platform_pair }}
+          path: ${{ env.WORK_DIR }}
+
+      - name: "Setup Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Login to DockerHub"
+        uses: docker/login-action@v3
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: "Docker metadata"
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_REPO }}
+          tags: |
+            type=raw,value=${{ steps.vers.outputs.maxmind_version }}
+            type=raw,value=latest
+
+      - name: "Build and export"
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.WORK_DIR }}
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.DOCKERHUB_REPO }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: "Export digest"
+        run: |
+          rm -rf /tmp/digests
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v6
+        with:
+          name: digest-${{ steps.vers.outputs.platform_pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    name: "Merge manifest"
+    needs: ["build"]
+
+    steps:
+      - name: "Download digests"
+        uses: actions/download-artifact@v7
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: "Setup Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Login to DockerHub"
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: "Docker metadata"
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_REPO }}
+          tags: |
+            type=raw,value=${{ needs.build.outputs.maxmind_version }}
+            type=raw,value=latest
+
+      - name: "Create manifest list and push"
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.DOCKERHUB_REPO }}@sha256:%s ' *)
+
+      - name: "Inspect image"
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKERHUB_REPO }}:${{ needs.build.outputs.maxmind_version }}
