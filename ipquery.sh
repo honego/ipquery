@@ -51,6 +51,7 @@ _italic() {
 }
 
 # 生成 Google 地图链接
+# https://developers.google.com/maps/documentation/urls/get-started?hl=zh-cn#map-action
 gen_googlemap() {
     local LATITUDE LONGITUDE RADIUS ZOOM_LEVEL
 
@@ -62,7 +63,7 @@ gen_googlemap() {
         return
     fi
 
-    # 根据半径大小动态调整地图缩放
+    # 根据半径大小动态调整地图缩放 取值范围 1-21 数值越大缩放越近
     if [ "$RADIUS" -gt 1000 ]; then
         ZOOM_LEVEL="12" # 半径 > 1km 缩放12
     elif [ "$RADIUS" -gt 500 ]; then
@@ -73,7 +74,8 @@ gen_googlemap() {
         ZOOM_LEVEL="15" # ≤250m 就保持默认的15
     fi
 
-    echo "https://www.google.com/maps/@$LATITUDE,$LONGITUDE,$ZOOM_LEVEL,cn"
+    echo "https://www.google.com/maps/place/$LATITUDE,$LONGITUDE/@$LATITUDE,$LONGITUDE,${ZOOM_LEVEL}z" # 2D 纯净地图
+    echo "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$LATITUDE,$LONGITUDE"          # 3D 街景地图
 }
 
 # https://www.nodeseek.com/post-627595-1
