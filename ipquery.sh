@@ -50,6 +50,19 @@ _italic() {
     printf "\033[3m%b\033[23m\n" "$*"
 }
 
+# 各变量默认值
+TEMP_DIR="$(mktemp -d 2> /dev/null)"
+
+# 准备程序运行基础命令
+check_cmd() {
+    curl -LsS https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
+}
+
+# 小写转换
+to_lower() {
+    tr '[:upper:]' '[:lower:]'
+}
+
 # 生成 Google 地图链接
 # https://developers.google.com/maps/documentation/urls/get-started?hl=zh-cn#map-action
 gen_googlemap() {
@@ -78,6 +91,26 @@ gen_googlemap() {
     echo "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$LATITUDE,$LONGITUDE"          # 3D 街景地图
 }
 
+ipinfo() {
+    local RESPONSE
+
+    RESPONSE="$(curl -Ls "https://ipinfo.io/widget/demo/$(curl -Ls ip.haiok.de)" 2> /dev/null || true)"
+    [ -n "$RESPONSE" ] || RESPONSE=""
+    ASN_TYPE="$("$TEMP_DIR/jq" -r '.data.asn.type // "null"' <<< "$RESPONSE")"
+    COMPANY_TYPE="$("$TEMP_DIR/jq" -r '.data.company.type // "null"' <<< "$RESPONSE")"
+
+    # https://ipinfo.io/developers/core-api
+    # The type of the Autonomous System (AS) organization, such as hosting, ISP, education, government, or business.
+    case "$(to_lower <<< "$ASN_TYPE")" in
+    business) : ;;
+    education) : ;;
+    hosting) : ;;
+    isp) : ;;
+    esac
+
+    # https://ipinfo.io/developers/asn
+}
+
 # https://www.nodeseek.com/post-627595-1
-curl -L -4 https://abiding-cistern-488411-j3.uc.r.appspot.com
-curl -L -6 https://abiding-cistern-488411-j3.uc.r.appspot.com
+# curl -L -4 https://abiding-cistern-488411-j3.uc.r.appspot.com
+# curl -L -6 https://abiding-cistern-488411-j3.uc.r.appspot.com
