@@ -50,6 +50,18 @@ _italic() {
     printf "\033[3m%b\033[23m\n" "$*"
 }
 
+## 定义关联数组
+
+declare -A IPINFO
+
+declare -A SHOW_TYPE
+
+SHOW_TYPE[business]="$Back_Yellow$Font_White$Font_B 商业 $Font_Suffix"
+SHOW_TYPE[education]="$Back_Yellow$Font_White$Font_B 教育 $Font_Suffix"
+SHOW_TYPE[hosting]="$Back_Red$Font_White$Font_B 机房 $Font_Suffix"
+SHOW_TYPE[isp]="$Back_Green$Font_White$Font_B 家宽 $Font_Suffix"
+SHOW_TYPE[other]="$Back_Yellow$Font_White$Font_B 其他 $Font_Suffix"
+
 # 各变量默认值
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
 
@@ -91,24 +103,39 @@ gen_googlemap() {
     echo "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$LATITUDE,$LONGITUDE"          # 3D 街景地图
 }
 
-ipinfo() {
+ipinfo_db() {
     local RESPONSE
 
     RESPONSE="$(curl -Ls "https://ipinfo.io/widget/demo/$(curl -Ls ip.haiok.de)" 2> /dev/null || true)"
     [ -n "$RESPONSE" ] || RESPONSE=""
-    ASN_TYPE="$("$TEMP_DIR/jq" -r '.data.asn.type // "null"' <<< "$RESPONSE")"
-    COMPANY_TYPE="$("$TEMP_DIR/jq" -r '.data.company.type // "null"' <<< "$RESPONSE")"
-
-    # https://ipinfo.io/developers/core-api
-    # The type of the Autonomous System (AS) organization, such as hosting, ISP, education, government, or business.
-    case "$(to_lower <<< "$ASN_TYPE")" in
-    business) : ;;
-    education) : ;;
-    hosting) : ;;
-    isp) : ;;
-    esac
+    IPINFO[asnType]="$("$TEMP_DIR/jq" -r '.data.asn.type' <<< "$RESPONSE")"
+    IPINFO[companyType]="$("$TEMP_DIR/jq" -r '.data.company.type' <<< "$RESPONSE")"
 
     # https://ipinfo.io/developers/asn
+    # The type of the Autonomous System (AS) organization, such as hosting, ISP, education, government, or business.
+    case "$(to_lower <<< "${IPINFO[asnType]}")" in
+    business) IPINFO[showAsnType]="${SHOW_TYPE[business]}" ;;
+    education) IPINFO[showAsnType]="${SHOW_TYPE[education]}" ;;
+    hosting) IPINFO[showAsnType]="${SHOW_TYPE[hosting]}" ;;
+    isp) IPINFO[showAsnType]="${SHOW_TYPE[isp]}" ;;
+    *) IPINFO[showAsnType]="${SHOW_TYPE[other]}" ;;
+    esac
+
+    case "$(to_lower <<< "${IPINFO[companyType]}")" in
+    business) IPINFO[showCompanyType]="${SHOW_TYPE[business]}" ;;
+    education) IPINFO[showCompanyType]="${SHOW_TYPE[education]}" ;;
+    hosting) IPINFO[showCompanyType]="${SHOW_TYPE[hosting]}" ;;
+    isp) IPINFO[showCompanyType]="${SHOW_TYPE[isp]}" ;;
+    *) IPINFO[showCompanyType]="${SHOW_TYPE[other]}" ;;
+    esac
+
+    IPINFO[countryCode]="$("$TEMP_DIR/jq" -r '.data.country' <<< "$RESPONSE")"
+    IPINFO[proxy]="$("$TEMP_DIR/jq" -r '.data.privacy.proxy' <<< "$RESPONSE")"
+    IPINFO[tor]="$("$TEMP_DIR/jq" -r '.data.privacy.tor' <<< "$RESPONSE")"
+    IPINFO[vpn]="$("$TEMP_DIR/jq" -r '.data.privacy.vpn' <<< "$RESPONSE")"
+    IPINFO[server]="$("$TEMP_DIR/jq" -r '.data.privacy.hosting' <<< "$RESPONSE")"
+    IPINFO[postal]="$("$TEMP_DIR/jq" -r '.data.postal' <<< "$RESPONSE")"
+
 }
 
 # https://www.nodeseek.com/post-627595-1
