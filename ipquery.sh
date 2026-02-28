@@ -66,6 +66,54 @@ SHOW_TYPE[other]="$Back_Yellow$Font_White$Font_B 其他 $Font_Suffix"
 # 各变量默认值
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
 
+clear() {
+    [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
+}
+
+die() {
+    _err_msg >&2 "$(_red "$@")"
+    exit 1
+}
+
+curl() {
+    local RET
+
+    # 添加 -f --fail 不然 404 退出码也为 0
+    # 32位 cygwin 已停止更新 证书可能有问题 添加 --insecure
+    # centos7 curl 不支持 --retry-connrefused --retry-all-errors 因此手动 retry
+
+    for ((i = 1; i <= 5; i++)); do
+        if command curl --insecure --connect-timeout 10 -f "$@"; then
+            return
+        else
+            RET="$?"
+            # 403 404 错误 或达到重试次数
+            if [ $RET -eq 22 ] || [ $i -eq 5 ]; then
+                return $RET
+            fi
+            sleep 1
+        fi
+    done
+}
+
+is_in_china() {
+    if [ -z "$COUNTRY" ]; then
+        # www.cloudflare.com / dash.cloudflare.com 国内访问的是美国服务器，而且部分地区被墙
+        # 没有ipv6 www.visa.cn
+        # 没有ipv6 www.bose.cn
+        # 没有ipv6 www.garmin.com.cn
+        # 备用 www.prologis.cn
+        # 备用 www.autodesk.com.cn
+        # 备用 www.keysight.com.cn
+
+        if ! COUNTRY="$(curl -Ls http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .)"; then
+            die "Can not get location."
+        fi
+        echo >&2 "Location: $COUNTRY"
+    fi
+    [ "$COUNTRY" = CN ]
+}
+
 # 准备程序运行基础命令
 check_cmd() {
     curl -LsS https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
