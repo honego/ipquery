@@ -104,15 +104,19 @@ gen_googlemap() {
 }
 
 ipinfo_db() {
-    local RESPONSE
+    local RESPONSE ISO3166
 
     RESPONSE="$(curl -Ls "https://ipinfo.io/widget/demo/$(curl -Ls ip.haiok.de)" 2> /dev/null || true)"
+    # https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes
+    ISO3166="$(curl -Ls https://fastly.jsdelivr.net/gh/lukes/ISO-3166-Countries-with-Regional-Codes@master/all/all.json)"
+
     [ -n "$RESPONSE" ] || RESPONSE=""
     IPINFO[asnType]="$("$TEMP_DIR/jq" -r '.data.asn.type' <<< "$RESPONSE")"
     IPINFO[companyType]="$("$TEMP_DIR/jq" -r '.data.company.type' <<< "$RESPONSE")"
 
     # https://ipinfo.io/developers/asn
     # The type of the Autonomous System (AS) organization, such as hosting, ISP, education, government, or business.
+    # ASN使用类型
     case "$(to_lower <<< "${IPINFO[asnType]}")" in
     business) IPINFO[showAsnType]="${SHOW_TYPE[business]}" ;;
     education) IPINFO[showAsnType]="${SHOW_TYPE[education]}" ;;
@@ -121,6 +125,7 @@ ipinfo_db() {
     *) IPINFO[showAsnType]="${SHOW_TYPE[other]}" ;;
     esac
 
+    # 公司类型
     case "$(to_lower <<< "${IPINFO[companyType]}")" in
     business) IPINFO[showCompanyType]="${SHOW_TYPE[business]}" ;;
     education) IPINFO[showCompanyType]="${SHOW_TYPE[education]}" ;;
@@ -135,7 +140,8 @@ ipinfo_db() {
     IPINFO[vpn]="$("$TEMP_DIR/jq" -r '.data.privacy.vpn' <<< "$RESPONSE")"
     IPINFO[server]="$("$TEMP_DIR/jq" -r '.data.privacy.hosting' <<< "$RESPONSE")"
     IPINFO[postal]="$("$TEMP_DIR/jq" -r '.data.postal' <<< "$RESPONSE")"
-
+    IPINFO[abuseCountryCode]="$(jq -r '.data.abuse.country' <<< "$RESPONSE")"
+    IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r '.[] | select(.["alpha-2"] == $code) | .name' <<< "$ISO3166")"
 }
 
 # https://www.nodeseek.com/post-627595-1
