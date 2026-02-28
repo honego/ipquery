@@ -105,7 +105,7 @@ is_in_china() {
         # 备用 www.prologis.cn
         # 备用 www.autodesk.com.cn
         # 备用 www.keysight.com.cn
-        if ! COUNTRY="$(curl -Ls http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .)"; then
+        if ! COUNTRY="$(curl -L http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .)"; then
             die "Can not get location."
         fi
         echo >&2 "Location: $COUNTRY"
@@ -115,12 +115,32 @@ is_in_china() {
 
 # 准备程序运行基础命令
 check_cmd() {
-    curl -LsS https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
+    curl -L https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
+}
+
+# 大写转换
+to_upper() {
+    tr '[:lower:]' '[:upper:]'
 }
 
 # 小写转换
 to_lower() {
     tr '[:upper:]' '[:lower:]'
+}
+
+# 生成随机 UA
+gen_userAgent() {
+    local UA_VERSION
+
+    if ((RANDOM % 2)); then
+        # 随机生成 Chrome 140-145
+        UA_VERSION=$((140 + RANDOM % 6))
+        UA_BROWSER="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$UA_VERSION.0.0.0 Safari/537.36"
+    else
+        # 随机生成 Firefox 140-147
+        UA_VERSION=$((140 + RANDOM % 8))
+        UA_BROWSER="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:$UA_VERSION.0) Gecko/20100101 Firefox/$UA_VERSION.0"
+    fi
 }
 
 # 生成 DMS 格式坐标
@@ -155,7 +175,7 @@ gen_dms() {
 
 # 生成 Google 地图链接
 # https://developers.google.com/maps/documentation/urls/get-started?hl=zh-cn#map-action
-gen_googlemap() {
+gen_googleMap() {
     local LATITUDE LONGITUDE RADIUS ZOOM_LEVEL
 
     LATITUDE="$1"  # 纬度
