@@ -1,0 +1,18 @@
+The ipquery project is provided under:
+
+    SPDX-License-Identifier: Apache-2.0 AND AGPL-3.0
+
+Being primarily under the terms of the Apache License, Version 2.0,
+according with:
+
+    LICENSE
+
+With the core execution script being under the terms of the GNU Affero
+General Public License version 3.0 only, as stated at:
+
+    ipquery.sh
+
+In addition, individual files may carry their own explicit license.
+Please see the SPDX-License-Identifier tag on each file for more details.
+
+All contributions to the ipquery project are subject to this COPYING file.
