@@ -64,7 +64,6 @@ jobs:
         working-directory: ${{ env.WORK_DIR }}
         run: |
           set -eEuxo pipefail
-          pushd dist || exit 1
           PROJECT_NAME="${PWD##*/}"
           if [ -n "$GOARM" ]; then
             OUTPUT_NAME="${PROJECT_NAME}-${GOOS}-${GOARCH}v${GOARM}"
@@ -74,7 +73,6 @@ jobs:
           echo "OUTPUT_NAME=$OUTPUT_NAME" >> "$GITHUB_ENV"
           echo "GOOS: $GOOS, GOARCH: $GOARCH, GOARM: $GOARM"
           go build -v -trimpath -o dist/$OUTPUT_NAME -ldflags="-s -w -buildid="
-          popd || exit 1
 
       - name: "Package assets"
         working-directory: ${{ env.WORK_DIR }}/dist
