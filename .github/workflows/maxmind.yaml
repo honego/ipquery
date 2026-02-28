@@ -82,7 +82,7 @@ jobs:
           touch -mt "$(date +%Y01010000)" -- *
 
       - name: "Upload artifact"
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.OUTPUT_NAME }}
           path: ${{ env.WORK_DIR }}/dist/${{ env.OUTPUT_NAME }}
@@ -120,7 +120,7 @@ jobs:
           echo "maxmind_version=$(cat ${{ env.WORK_DIR }}/VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: "Download binary"
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: maxmind-${{ steps.vers.outputs.platform_pair }}
           path: ${{ env.WORK_DIR }}
@@ -162,7 +162,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: "Upload artifact"
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: digest-${{ steps.vers.outputs.platform_pair }}
           path: /tmp/digests/*
@@ -176,7 +176,7 @@ jobs:
 
     steps:
       - name: "Download digests"
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digest-*
