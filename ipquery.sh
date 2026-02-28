@@ -134,6 +134,7 @@ ipinfo_db() {
     *) IPINFO[showCompanyType]="${SHOW_TYPE[other]}" ;;
     esac
 
+    # 风险因子
     IPINFO[countryCode]="$("$TEMP_DIR/jq" -r '.data.country' <<< "$RESPONSE")"
     IPINFO[proxy]="$("$TEMP_DIR/jq" -r '.data.privacy.proxy' <<< "$RESPONSE")"
     IPINFO[tor]="$("$TEMP_DIR/jq" -r '.data.privacy.tor' <<< "$RESPONSE")"
