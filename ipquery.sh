@@ -52,6 +52,7 @@ _italic() {
 
 ## 定义关联数组
 
+declare -A MAXMIND
 declare -A IPINFO
 
 declare -A SHOW_TYPE
@@ -73,6 +74,36 @@ check_cmd() {
 # 小写转换
 to_lower() {
     tr '[:upper:]' '[:lower:]'
+}
+
+# 生成 DMS 格式坐标
+gen_dms() {
+    local LATITUDE LONGITUDE
+
+    LATITUDE="$1"  # 纬度
+    LONGITUDE="$2" # 经度
+
+    if [ -z "$LATITUDE" ] || [ "$LATITUDE" = "null" ] || [ -z "$LONGITUDE" ] || [ "$LONGITUDE" = "null" ]; then
+        return
+    fi
+
+    awk -v lat="$LATITUDE" -v lon="$LONGITUDE" '
+    function to_dms(coord, pos_dir, neg_dir) {
+        dir = (coord < 0) ? neg_dir : pos_dir
+        if (coord < 0) coord = -coord
+
+        deg = int(coord)
+        min_raw = (coord - deg) * 60
+        min = int(min_raw)
+        sec = (min_raw - min) * 60
+
+        return sprintf("%d°%d′%.0f″%s", deg, min, sec, dir)
+    }
+    BEGIN {
+        lat_dms = to_dms(lat, "N", "S")
+        lon_dms = to_dms(lon, "E", "W")
+        printf "%s, %s\n", lon_dms, lat_dms
+    }'
 }
 
 # 生成 Google 地图链接
@@ -101,6 +132,16 @@ gen_googlemap() {
 
     echo "https://www.google.com/maps/place/$LATITUDE,$LONGITUDE/@$LATITUDE,$LONGITUDE,${ZOOM_LEVEL}z" # 2D 纯净地图
     echo "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$LATITUDE,$LONGITUDE"          # 3D 街景地图
+}
+
+maxmind_db() {
+    local RESPONSE
+
+    RESPONSE="$(curl -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=cn" 2> /dev/null || true)"
+    [ -n "$RESPONSE" ] || RESPONSE=""
+
+    MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
+    MAXMIND[org]="$("$TEMP_DIR/jq" -r '.org' <<< "$RESPONSE")"
 }
 
 ipinfo_db() {
