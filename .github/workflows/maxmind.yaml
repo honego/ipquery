@@ -10,12 +10,12 @@ on:
     - cron: "0 16 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-permissions:
-  contents: read
 
 env:
   DOCKERHUB_REPO: ${{ secrets.DOCKER_USERNAME || github.repository_owner }}/maxmind
