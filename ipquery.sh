@@ -111,15 +111,17 @@ to_lower() {
 
 # 生成随机 UA
 gen_userAgent() {
-    local UA_VERSION
+    local TMP_RANDOM UA_VERSION
 
-    if ((RANDOM % 2)); then
+    TMP_RANDOM="$(shuf -i 0-32767 -n 1 2> /dev/null || od -vAn -N2 -tu2 < /dev/urandom | tr -d ' ')" # 模拟 RANDOM 变量用于生成 0 到 32767 之间的任一随机数
+
+    if [ $((TMP_RANDOM % 2)) -ne 0 ]; then
         # 随机生成 Chrome 140-145
-        UA_VERSION=$((140 + RANDOM % 6))
+        UA_VERSION=$((140 + TMP_RANDOM % 6))
         UA_BROWSER="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$UA_VERSION.0.0.0 Safari/537.36"
     else
         # 随机生成 Firefox 140-147
-        UA_VERSION=$((140 + RANDOM % 8))
+        UA_VERSION=$((140 + TMP_RANDOM % 8))
         UA_BROWSER="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:$UA_VERSION.0) Gecko/20100101 Firefox/$UA_VERSION.0"
     fi
 }
