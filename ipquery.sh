@@ -69,7 +69,7 @@ SHOW_TYPE[other]="$(_yellow_bg "其他")"
 
 # 各变量默认值
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
-: "${LANG:="zh-CN"}"
+: "${OUT_LANG:="zh-CN"}"
 
 clear() {
     [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
@@ -209,7 +209,7 @@ gen_googleMap() {
 maxmind_db() {
     local RESPONSE
 
-    RESPONSE="$(curl -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=$LANG" 2> /dev/null || true)"
+    RESPONSE="$(curl -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=$OUT_LANG" 2> /dev/null || true)"
     [ -n "$RESPONSE" ] || RESPONSE=""
 
     MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
