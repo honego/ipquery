@@ -214,6 +214,20 @@ maxmind_db() {
 
     MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
     MAXMIND[org]="$("$TEMP_DIR/jq" -r '.org' <<< "$RESPONSE")"
+    MAXMIND[city]="$("$TEMP_DIR/jq" -r '.city' <<< "$RESPONSE")"
+    MAXMIND[postal]="$("$TEMP_DIR/jq" -r '.postal_code' <<< "$RESPONSE")"
+    MAXMIND[latitude]="$("$TEMP_DIR/jq" -r '.latitude' <<< "$RESPONSE")"
+    MAXMIND[longitude]="$("$TEMP_DIR/jq" -r '.longitude' <<< "$RESPONSE")"
+    MAXMIND[radius]="$("$TEMP_DIR/jq" -r '.accuracy_radius' <<< "$RESPONSE")"
+    MAXMIND[continentCode]="$("$TEMP_DIR/jq" -r '.continent_code' <<< "$RESPONSE")"
+    MAXMIND[continent]="$("$TEMP_DIR/jq" -r '.continent' <<< "$RESPONSE")"
+    MAXMIND[countryCode]="$("$TEMP_DIR/jq" -r '.country_code' <<< "$RESPONSE")"
+    MAXMIND[country]="$("$TEMP_DIR/jq" -r '.country' <<< "$RESPONSE")"
+    MAXMIND[timezone]="$("$TEMP_DIR/jq" -r '.time_zone' <<< "$RESPONSE")"
+    MAXMIND[regionCode]="$("$TEMP_DIR/jq" -r 'if .region_code != null and .region_code != "" then .region_code else "N/A" end' <<< "$RESPONSE")"
+    MAXMIND[region]="$("$TEMP_DIR/jq" -r 'if .region != null and .region != "" then .region else "N/A" end' <<< "$RESPONSE")"
+    MAXMIND[regCountryCode]="$("$TEMP_DIR/jq" -r '.registered_country_code' <<< "$RESPONSE")" # 注册地国家代码
+    MAXMIND[regCountry]="$("$TEMP_DIR/jq" -r '.registered_country' <<< "$RESPONSE")"          # 注册地国家名称
 }
 
 ipinfo_db() {
