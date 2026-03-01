@@ -29,10 +29,6 @@ _yellow() {
     printf "\033[33m%b\033[0m\n" "$*"
 }
 
-_cyan() {
-    printf "\033[36m%b\033[0m\n" "$*"
-}
-
 _err_msg() {
     printf "\033[41m\033[1mError\033[0m %b\n" "$*"
 }
@@ -41,8 +37,16 @@ _suc_msg() {
     printf "\033[42m\033[1mSuccess\033[0m %b\n" "$*"
 }
 
-_warn_msg() {
-    printf "\033[43m\033[1mWarning\033[0m %b\n" "$*"
+_red_bg() {
+    printf "\033[41m\033[37m\033[1m%b\033[0m\n" "$*"
+}
+
+_green_bg() {
+    printf "\033[42m\033[37m\033[1m%b\033[0m\n" "$*"
+}
+
+_yellow_bg() {
+    printf "\033[43m\033[37m\033[1m%b\033[0m\n" "$*"
 }
 
 # 斜体输出
@@ -57,14 +61,15 @@ declare -A IPINFO
 
 declare -A SHOW_TYPE
 
-SHOW_TYPE[business]="$Back_Yellow$Font_White$Font_B 商业 $Font_Suffix"
-SHOW_TYPE[education]="$Back_Yellow$Font_White$Font_B 教育 $Font_Suffix"
-SHOW_TYPE[hosting]="$Back_Red$Font_White$Font_B 机房 $Font_Suffix"
-SHOW_TYPE[isp]="$Back_Green$Font_White$Font_B 家宽 $Font_Suffix"
-SHOW_TYPE[other]="$Back_Yellow$Font_White$Font_B 其他 $Font_Suffix"
+SHOW_TYPE[business]="$(_yellow_bg "商业")"
+SHOW_TYPE[education]="$(_yellow_bg "教育")"
+SHOW_TYPE[hosting]="$(_red_bg "机房")"
+SHOW_TYPE[isp]="$(_green_bg "家宽")"
+SHOW_TYPE[other]="$(_yellow_bg "其他")"
 
 # 各变量默认值
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
+: "${LANG:="zh-CN"}"
 
 clear() {
     [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
@@ -83,13 +88,13 @@ curl() {
     # centos7 curl 不支持 --retry-connrefused --retry-all-errors 因此手动 retry
 
     for ((i = 1; i <= 5; i++)); do
-        if command curl --insecure --connect-timeout 10 -f "$@"; then
+        if curl --connect-timeout 10 --fail --insecure "$@"; then
             return
         else
             RET="$?"
             # 403 404 错误 或达到重试次数
-            if [ $RET -eq 22 ] || [ $i -eq 5 ]; then
-                return $RET
+            if [ "$RET" -eq 22 ] || [ "$i" -eq 5 ]; then
+                return "$RET"
             fi
             sleep 1
         fi
@@ -204,7 +209,7 @@ gen_googleMap() {
 maxmind_db() {
     local RESPONSE
 
-    RESPONSE="$(curl -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=cn" 2> /dev/null || true)"
+    RESPONSE="$(curl -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=$LANG" 2> /dev/null || true)"
     [ -n "$RESPONSE" ] || RESPONSE=""
 
     MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
