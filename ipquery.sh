@@ -17,42 +17,18 @@ set -eE
 # shellcheck disable=SC2034
 readonly SCRIPT_VERSION='v1.0.0'
 
-_red() {
-    printf "\033[31m%b\033[0m\n" "$*"
-}
-
-_green() {
-    printf "\033[32m%b\033[0m\n" "$*"
-}
-
-_yellow() {
-    printf "\033[33m%b\033[0m\n" "$*"
-}
-
-_err_msg() {
-    printf "\033[41m\033[1mError\033[0m %b\n" "$*"
-}
-
-_suc_msg() {
-    printf "\033[42m\033[1mSuccess\033[0m %b\n" "$*"
-}
-
-_red_bg() {
-    printf "\033[41m\033[37m\033[1m%b\033[0m\n" "$*"
-}
-
-_green_bg() {
-    printf "\033[42m\033[37m\033[1m%b\033[0m\n" "$*"
-}
-
-_yellow_bg() {
-    printf "\033[43m\033[37m\033[1m%b\033[0m\n" "$*"
-}
+# 自定义字体彩色
+_red() { printf "\033[31m%b\033[0m\n" "$*"; }
+_green() { printf "\033[32m%b\033[0m\n" "$*"; }
+_yellow() { printf "\033[33m%b\033[0m\n" "$*"; }
+_err_msg() { printf "\033[41m\033[1mError\033[0m %b\n" "$*"; }
+_suc_msg() { printf "\033[42m\033[1mSuccess\033[0m %b\n" "$*"; }
+_red_bg() { printf "\033[41m\033[37m\033[1m%b\033[0m\n" "$*"; }
+_green_bg() { printf "\033[42m\033[37m\033[1m%b\033[0m\n" "$*"; }
+_yellow_bg() { printf "\033[43m\033[37m\033[1m%b\033[0m\n" "$*"; }
 
 # 斜体输出
-_italic() {
-    printf "\033[3m%b\033[23m\n" "$*"
-}
+_italic() { printf "\033[3m%b\033[23m\n" "$*"; }
 
 ## 定义关联数组
 
