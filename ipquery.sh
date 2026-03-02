@@ -36,7 +36,7 @@ TEMP_DIR="$(mktemp -d 2> /dev/null)"
 
 ## 定义数组
 
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "icanhazip.com" "api64.ipify.org" "ifconfig.co" "ifconfig.io" "ifconfig.me" "ident.me") # IP查询接口 IPV4 IPV6兼容
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.me" "ip.im" "icanhazip.com" "api64.ipify.org" "ifconfig.co" "ifconfig.io" "ifconfig.me" "ident.me") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
 declare -A IPINFO
