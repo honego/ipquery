@@ -368,9 +368,10 @@ gen_googleMap() {
 }
 
 maxmind_db() {
-    local RESPONSE
+    local CHECK_IP RESPONSE
 
-    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=$OUT_LANG" 2> /dev/null || true)"
+    CHECK_IP="$1"
+    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://maxmind.haiok.de/$CHECK_IP?lang=$OUT_LANG" 2> /dev/null || true)"
     [ -n "$RESPONSE" ] || RESPONSE=""
 
     MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
@@ -400,9 +401,10 @@ maxmind_db() {
 }
 
 ipinfo_db() {
-    local RESPONSE ISO3166
+    local CHECK_IP RESPONSE ISO3166
 
-    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://ipinfo.io/widget/demo/$(curl -Ls ip.haiok.de)" 2> /dev/null || true)"
+    CHECK_IP="$1"
+    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://ipinfo.io/widget/demo/$CHECK_IP" 2> /dev/null || true)"
     # https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes
     ISO3166="$(curl "${CURL_OPTS[@]}" -Ls https://fastly.jsdelivr.net/gh/lukes/ISO-3166-Countries-with-Regional-Codes@master/all/all.json 2> /dev/null || true)"
 
@@ -439,6 +441,11 @@ ipinfo_db() {
     IPINFO[postal]="$("$TEMP_DIR/jq" -r '.data.postal' <<< "$RESPONSE")"
     IPINFO[abuseCountryCode]="$("$TEMP_DIR/jq" -r '.data.abuse.country' <<< "$RESPONSE")"
     IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r ".[] | select(.[\"alpha-2\"] == \$code) | .name" <<< "$ISO3166")"
+}
+
+run_check() {
+    maxmind_db "$1"
+    ipinfo_db "$1"
 }
 
 ## 解析命令行参数
