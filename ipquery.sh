@@ -230,7 +230,7 @@ get_ipv6() {
         RESPONSE="$(curl -Ls -6 "$i" 2> /dev/null || true)"
         if [ -n "$RESPONSE" ] && is_legal_ipv6 "$RESPONSE" && is_valid_ipv6 "$RESPONSE"; then
             IPV6_ADDRESS="$RESPONSE"
-            IPV6_MASKED="$(awk -F':' 'NF>=2{print $1":"$2":"$3":*:*:*:*:*"} NF<2{print ""}' <<< "$IPV6_ADDRESS")" # IPV6 模糊处理
+            IPV6_MASKED="$(printf '%s\n' "$IPV6_ADDRESS" | sed 's/^\([^:]*:[^:]*:[^:]*\).*/\1:*:*:*:*:*/')" # IPV6 模糊处理
             break
         fi
     done
