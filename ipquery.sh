@@ -45,8 +45,7 @@ declare -a CURL_OPTS=()
 # IP查询接口 IPV4 IPV6兼容
 declare -a IPAPI_ENDPOINT=("ip.haiok.de" "icanhazip.com" "ip.sb" "ip.gs" "ip.im" "ip.me" "api.myip.la" "ident.me" "i-p.show"
     "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "api64.ipify.org" "myip.wtf" "wtfismyip.com" "wgetip.com"
-    "ip.zerosla.net" "ping0.cc" "api.seeip.org" "myip.biturl.top"
-    "test.ipw.cn" "ifconfig.cc")
+    "ip.zerosla.net" "ping0.cc" "api.seeip.org" "myip.biturl.top" "ip.tyk.nu")
 
 declare -A SCRIPT_HEAD
 
