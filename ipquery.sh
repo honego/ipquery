@@ -9,12 +9,11 @@
 # https://github.com/fscarmen/sing-box
 # https://github.com/xykt/IPQuality
 
-# shellcheck disable=all
+# shellcheck disable=SC2034
 
 set -eE
 
 # MAJOR.MINOR.PATCH
-# shellcheck disable=SC2034
 readonly SCRIPT_VERSION='v1.0.0'
 
 ## 自定义字体彩色
@@ -38,6 +37,7 @@ TEMP_DIR="$(mktemp -d 2> /dev/null)"
 trap 'rm -rf "${TEMP_DIR:?}" > /dev/null 2>&1' SIGINT SIGTERM EXIT
 
 ## 定义数组
+declare -a CURL_OPTS=()
 declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
@@ -52,6 +52,10 @@ SHOW_TYPE[isp]="$(_green_bg "家宽")"
 SHOW_TYPE[other]="$(_yellow_bg "其他")"
 
 ## 函数库
+usage_and_exit() {
+    :
+}
+
 clear() {
     [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
 }
@@ -91,7 +95,7 @@ is_in_china() {
         # 备用 www.prologis.cn
         # 备用 www.autodesk.com.cn
         # 备用 www.keysight.com.cn
-        if ! COUNTRY="$(curl -L http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .)"; then
+        if ! COUNTRY="$(curl "${CURL_OPTS[@]}" -L http://www.qualcomm.cn/cdn-cgi/trace | grep '^loc=' | cut -d= -f2 | grep .)"; then
             die "Can not get location."
         fi
         echo >&2 "Location: $COUNTRY"
@@ -237,7 +241,7 @@ get_ipv4() {
     fi
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
-        RESPONSE="$(curl -L -4 "$i" 2> /dev/null || true)"
+        RESPONSE="$(curl "${CURL_OPTS[@]}" -L -4 "$i" 2> /dev/null || true)"
         if [ -n "$RESPONSE" ] && is_legal_ipv4 "$RESPONSE" && is_valid_ipv4 "$RESPONSE"; then
             IPV4_ADDRESS="$RESPONSE"
             IPV4_MASKED="$(awk -F'.' 'NF==4{print $1"."$2".*.*"} NF!=4{print ""}' <<< "$IPV4_ADDRESS")" # IPV4 模糊处理
@@ -257,7 +261,7 @@ get_ipv6() {
     fi
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
-        RESPONSE="$(curl -L -6 "$i" 2> /dev/null || true)"
+        RESPONSE="$(curl "${CURL_OPTS[@]}" -L -6 "$i" 2> /dev/null || true)"
         if [ -n "$RESPONSE" ] && is_legal_ipv6 "$RESPONSE" && is_valid_ipv6 "$RESPONSE"; then
             IPV6_ADDRESS="$RESPONSE"
             IPV6_MASKED="$(printf '%s\n' "$IPV6_ADDRESS" | sed 's/^\([^:]*:[^:]*:[^:]*\).*/\1:*:*:*:*:*/')" # IPV6 模糊处理
@@ -268,14 +272,14 @@ get_ipv6() {
 
 # 准备程序运行基础命令
 install_runCmd() {
-    curl -L https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
+    curl "${CURL_OPTS[@]}" -L https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
 }
 
 bootstrap_deps() {
     # https://github.com/ip2location/ip2location-iata-icao
-    IATAICAO_DB="$(curl -Ls https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
+    IATAICAO_DB="$(curl "${CURL_OPTS[@]}" -Ls https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
     # https://github.com/lmc999/RegionRestrictionCheck
-    MEDIA_COOKIE="$(curl -Ls https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
+    MEDIA_COOKIE="$(curl "${CURL_OPTS[@]}" -Ls https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
 }
 
 # 大写转换
@@ -366,7 +370,7 @@ gen_googleMap() {
 maxmind_db() {
     local RESPONSE
 
-    RESPONSE="$(curl -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=$OUT_LANG" 2> /dev/null || true)"
+    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://maxmind.haiok.de/$(curl -Ls ip.haiok.de)?lang=$OUT_LANG" 2> /dev/null || true)"
     [ -n "$RESPONSE" ] || RESPONSE=""
 
     MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
@@ -398,9 +402,9 @@ maxmind_db() {
 ipinfo_db() {
     local RESPONSE ISO3166
 
-    RESPONSE="$(curl -Ls "https://ipinfo.io/widget/demo/$(curl -Ls ip.haiok.de)" 2> /dev/null || true)"
+    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://ipinfo.io/widget/demo/$(curl -Ls ip.haiok.de)" 2> /dev/null || true)"
     # https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes
-    ISO3166="$(curl -Ls https://fastly.jsdelivr.net/gh/lukes/ISO-3166-Countries-with-Regional-Codes@master/all/all.json)"
+    ISO3166="$(curl "${CURL_OPTS[@]}" -Ls https://fastly.jsdelivr.net/gh/lukes/ISO-3166-Countries-with-Regional-Codes@master/all/all.json 2> /dev/null || true)"
 
     [ -n "$RESPONSE" ] || RESPONSE=""
     IPINFO[asnType]="$("$TEMP_DIR/jq" -r '.data.asn.type' <<< "$RESPONSE")"
@@ -434,8 +438,42 @@ ipinfo_db() {
     IPINFO[server]="$("$TEMP_DIR/jq" -r '.data.privacy.hosting' <<< "$RESPONSE")"
     IPINFO[postal]="$("$TEMP_DIR/jq" -r '.data.postal' <<< "$RESPONSE")"
     IPINFO[abuseCountryCode]="$("$TEMP_DIR/jq" -r '.data.abuse.country' <<< "$RESPONSE")"
-    IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r '.[] | select(.["alpha-2"] == $code) | .name' <<< "$ISO3166")"
+    IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r ".[] | select(.[\"alpha-2\"] == \$code) | .name" <<< "$ISO3166")"
 }
+
+## 解析命令行参数
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h | --help)
+        usage_and_exit
+        ;;
+    --debug)
+        set -x
+        shift
+        ;;
+    -4 | --ipv4)
+        CHECK_IPV4=1
+        shift
+        ;;
+    -6 | --ipv6)
+        CHECK_IPV6=1
+        shift
+        ;;
+    -i | --interface)
+        [ -z "$2" ] || [ "${2#-}" != "$2" ] && usage_and_exit
+        CURL_OPTS+=(--interface "$2")
+        shift 2
+        ;;
+    -l | --language)
+        [ -z "$2" ] || [ "${2#-}" != "$2" ] && usage_and_exit
+        OUT_LANG="$(to_lower <<< "$2")"
+        shift 2
+        ;;
+    *)
+        die "Illegal option: $1"
+        ;;
+    esac
+done
 
 ## 主程序运行 1/3
 clear
