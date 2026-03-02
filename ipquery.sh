@@ -38,7 +38,10 @@ trap 'rm -rf "${TEMP_DIR:?}" > /dev/null 2>&1' SIGINT SIGTERM EXIT
 
 ## 定义数组
 declare -a CURL_OPTS=()
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me") # IP查询接口 IPV4 IPV6兼容
+
+# IP查询接口 IPV4 IPV6兼容
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me"
+    "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "ping0.cc" "getip.cc" "wgetip.com" "test.ipw.cn")
 
 declare -A MAXMIND
 declare -A IPINFO
@@ -292,6 +295,34 @@ to_lower() {
     tr '[:upper:]' '[:lower:]'
 }
 
+# 获取文本视觉宽度
+visual_width() {
+    local STRING NON_ASCII
+
+    STRING="$1"
+    # 将标准 ASCII 字符 (空格到 ~ 符号 含制表符) 全部剔除 剩下的全是宽字符
+    NON_ASCII="${STRING//[ -~$'\t']/}"
+    echo $((${#STRING} + ${#NON_ASCII})) # 总字符数 + 宽字符数 = 终端视觉宽度
+}
+
+# 生成居中空格
+center_padding() {
+    local INPUT_TEXT SCREEN_WIDTH CONTENT_WIDTH OFFSET
+
+    INPUT_TEXT="$1"
+    SCREEN_WIDTH="${2:-80}"
+    # 重新计算以确保其为正确的视觉宽度
+    CONTENT_WIDTH="$(visual_width "$INPUT_TEXT")"
+    OFFSET=$(((SCREEN_WIDTH - CONTENT_WIDTH) / 2))
+
+    # 计算出偏移量直接注入变量 PADDING
+    if ((OFFSET > 0)); then
+        printf -v PADDING "%*s" "$OFFSET" ""
+    else
+        PADDING=""
+    fi
+}
+
 # 生成随机 UA
 gen_userAgent() {
     local TMP_RANDOM UA_VERSION
@@ -442,6 +473,34 @@ ipinfo_db() {
     IPINFO[abuseCountryCode]="$("$TEMP_DIR/jq" -r '.data.abuse.country' <<< "$RESPONSE")"
     IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r ".[] | select(.[\"alpha-2\"] == \$code) | .name" <<< "$ISO3166")"
 }
+
+# shellcheck disable=all
+# show_head() {
+#     echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
+#     if [[ $mode_lite -eq 0 ]]; then
+#         if [ "$fullIP" -eq 1 ]; then
+#             calc_padding "$(printf '%*s' "${shead[ltitle]}" '')$IP" 72
+#             echo -ne "\r$PADDING$Font_B${shead[title]}$Font_Cyan$IP$Font_Suffix\n"
+#         else
+#             calc_padding "$(printf '%*s' "${shead[ltitle]}" '')$IPhide" 72
+#             echo -ne "\r$PADDING$Font_B${shead[title]}$Font_Cyan$IPhide$Font_Suffix\n"
+#         fi
+#     else
+#         if [ "$fullIP" -eq 1 ]; then
+#             calc_padding "$(printf '%*s' "${shead[ltitle_lite]}" '')$IP" 72
+#             echo -ne "\r$PADDING$Font_B${shead[title_lite]}$Font_Cyan$IP$Font_Suffix\n"
+#         else
+#             calc_padding "$(printf '%*s' "${shead[ltitle_lite]}" '')$IPhide" 72
+#             echo -ne "\r$PADDING$Font_B${shead[title_lite]}$Font_Cyan$IPhide$Font_Suffix\n"
+#         fi
+#     fi
+#     calc_padding "${shead[git]}" 72
+#     echo -ne "\r$PADDING$Font_U${shead[git]}$Font_Suffix\n"
+#     calc_padding "${shead[bash]}" 72
+#     echo -ne "\r$PADDING${shead[bash]}\n"
+#     echo -ne "\r${shead[ptime]}${shead[time]}  ${shead[ver]}\n"
+#     echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
+# }
 
 run_check() {
     maxmind_db "$1"
