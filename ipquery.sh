@@ -213,8 +213,28 @@ is_valid_ipv6() {
     return 0
 }
 
+has_v4_v6() {
+    local IP_FAMILY
+
+    IP_FAMILY="$1"
+
+    # 参数校验
+    [ "$IP_FAMILY" != "4" ] && [ "$IP_FAMILY" != "6" ] && return 1
+
+    ip -"$IP_FAMILY" addr show scope global 2> /dev/null | grep -q inet || return 1 # 是否存在 global 地址
+    ip -"$IP_FAMILY" route show default 2> /dev/null | grep -q default || return 1  # 是否存在默认路由
+    return 0
+}
+
 get_ipv4() {
     local RESPONSE
+
+    if has_v4_v6 4; then
+        IPV4_ONLINE="true"
+    else
+        IPV4_ONLINE="false"
+        return
+    fi
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
         RESPONSE="$(curl -L -4 "$i" 2> /dev/null || true)"
@@ -228,6 +248,13 @@ get_ipv4() {
 
 get_ipv6() {
     local RESPONSE
+
+    if has_v4_v6 6; then
+        IPV6_ONLINE="true"
+    else
+        IPV6_ONLINE="false"
+        return
+    fi
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
         RESPONSE="$(curl -L -6 "$i" 2> /dev/null || true)"
