@@ -32,7 +32,7 @@ _italic() { printf "\033[3m%b\033[23m\n" "$*"; }
 
 ## 定义数组
 
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "icanhazip.com" "api64.ipify.org" "ip.sb" "ip.gs" "ifconfig.io" "ifconfig.co" "ident.me" "ifconfig.me") # IP查询接口 IPV4 IPV6兼容
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "icanhazip.com" "api64.ipify.org" "ifconfig.co" "ifconfig.io" "ifconfig.me" "ident.me") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
 declare -A IPINFO
