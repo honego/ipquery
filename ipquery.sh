@@ -30,7 +30,9 @@ _yellow_bg() { printf "\033[43m\033[37m\033[1m%b\033[0m\n" "$*"; }
 # 斜体输出
 _italic() { printf "\033[3m%b\033[23m\n" "$*"; }
 
-## 定义关联数组
+## 定义数组
+
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "icanhazip.com" "api64.ipify.org" "ip.sb" "ip.gs" "ifconfig.io" "ifconfig.co" "ident.me" "ifconfig.me") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
 declare -A IPINFO
@@ -45,7 +47,7 @@ SHOW_TYPE[other]="$(_yellow_bg "其他")"
 
 # 各变量默认值
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
-: "${OUT_LANG:="zh-CN"}"
+: "${OUT_LANG:="zh-CN"}" # 默认输出中文
 
 clear() {
     [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
@@ -92,6 +94,18 @@ is_in_china() {
         echo >&2 "Location: $COUNTRY"
     fi
     [ "$COUNTRY" = CN ]
+}
+
+get_ipv4() {
+    local RESPONSE
+
+    for i in "${IPAPI_ENDPOINT[@]}"; do
+        RESPONSE="$(curl -Ls -4 "$i" 2> /dev/null || true)"
+        if [[ $? -eq 0 && ! $RESPONSE =~ error && -n $RESPONSE ]]; then
+            IPV4_ADDRESS="$RESPONSE"
+            break
+        fi
+    done
 }
 
 # 准备程序运行基础命令
@@ -204,8 +218,16 @@ maxmind_db() {
     MAXMIND[timezone]="$("$TEMP_DIR/jq" -r '.time_zone' <<< "$RESPONSE")"
     MAXMIND[regionCode]="$("$TEMP_DIR/jq" -r 'if .region_code != null and .region_code != "" then .region_code else "N/A" end' <<< "$RESPONSE")"
     MAXMIND[region]="$("$TEMP_DIR/jq" -r 'if .region != null and .region != "" then .region else "N/A" end' <<< "$RESPONSE")"
-    MAXMIND[regCountryCode]="$("$TEMP_DIR/jq" -r '.registered_country_code' <<< "$RESPONSE")" # 注册地国家代码
-    MAXMIND[regCountry]="$("$TEMP_DIR/jq" -r '.registered_country' <<< "$RESPONSE")"          # 注册地国家名称
+    MAXMIND[rgsCountryCode]="$("$TEMP_DIR/jq" -r '.registered_country_code' <<< "$RESPONSE")" # 注册地国家代码
+    MAXMIND[rgsCountry]="$("$TEMP_DIR/jq" -r '.registered_country' <<< "$RESPONSE")"          # 注册地国家名称
+
+    if [ "${MAXMIND[latitude]}" != "null" ] && [ "${MAXMIND[longitude]}" != "null" ]; then
+        MAXMIND[dms]="$(gen_dms "${MAXMIND[latitude]}" "${MAXMIND[longitude]}")"
+        MAXMIND[map]="$(gen_googleMap "${MAXMIND[latitude]}" "${MAXMIND[longitude]}" "${MAXMIND[radius]}")"
+    else
+        MAXMIND[dms]="null"
+        MAXMIND[map]="null"
+    fi
 }
 
 ipinfo_db() {
