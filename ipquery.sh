@@ -42,11 +42,16 @@ declare -a CURL_OPTS=()
 # IP查询接口 IPV4 IPV6兼容
 declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "wgetip.com" "test.ipw.cn")
 
+declare -A SCRIPT_HEAD
+
 declare -A MAXMIND
 declare -A IPINFO
 
+SCRIPT_HEAD[lenTitle]="16" # 中文环境下标题长度为16个字符
+
 declare -A SHOW_TYPE
 
+# ipinfo 属性输出类型映射
 SHOW_TYPE[business]="$(_yellow_bg "商业")"
 SHOW_TYPE[education]="$(_yellow_bg "教育")"
 SHOW_TYPE[hosting]="$(_red_bg "机房")"
@@ -474,32 +479,17 @@ ipinfo_db() {
 }
 
 # shellcheck disable=all
-# show_head() {
-#     echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
-#     if [[ $mode_lite -eq 0 ]]; then
-#         if [ "$fullIP" -eq 1 ]; then
-#             calc_padding "$(printf '%*s' "${shead[ltitle]}" '')$IP" 72
-#             echo -ne "\r$PADDING$Font_B${shead[title]}$Font_Cyan$IP$Font_Suffix\n"
-#         else
-#             calc_padding "$(printf '%*s' "${shead[ltitle]}" '')$IPhide" 72
-#             echo -ne "\r$PADDING$Font_B${shead[title]}$Font_Cyan$IPhide$Font_Suffix\n"
-#         fi
-#     else
-#         if [ "$fullIP" -eq 1 ]; then
-#             calc_padding "$(printf '%*s' "${shead[ltitle_lite]}" '')$IP" 72
-#             echo -ne "\r$PADDING$Font_B${shead[title_lite]}$Font_Cyan$IP$Font_Suffix\n"
-#         else
-#             calc_padding "$(printf '%*s' "${shead[ltitle_lite]}" '')$IPhide" 72
-#             echo -ne "\r$PADDING$Font_B${shead[title_lite]}$Font_Cyan$IPhide$Font_Suffix\n"
-#         fi
-#     fi
-#     calc_padding "${shead[git]}" 72
-#     echo -ne "\r$PADDING$Font_U${shead[git]}$Font_Suffix\n"
-#     calc_padding "${shead[bash]}" 72
-#     echo -ne "\r$PADDING${shead[bash]}\n"
-#     echo -ne "\r${shead[ptime]}${shead[time]}  ${shead[ver]}\n"
-#     echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
-# }
+show_head() {
+    echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
+    center_padding "$(printf '%*s' "${SCRIPT_HEAD[lenTitle]}" '')$IPhide" 72
+    echo -en "\r$PADDING$Font_B${shead[title]}$Font_Cyan$IPhide$Font_Suffix\n"
+    center_padding "${shead[git]}" 72
+    echo -en "\r$PADDING$Font_U${shead[git]}$Font_Suffix\n"
+    center_padding "${shead[bash]}" 72
+    echo -en "\r$PADDING${shead[bash]}\n"
+    echo -en "\r${shead[ptime]}${shead[time]}  ${shead[ver]}\n"
+    echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
+}
 
 run_check() {
     maxmind_db "$1"
