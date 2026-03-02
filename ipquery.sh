@@ -36,7 +36,8 @@ TEMP_DIR="$(mktemp -d 2> /dev/null)"
 
 ## 定义数组
 
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.me" "ip.im" "icanhazip.com" "api64.ipify.org" "ifconfig.co" "ifconfig.io" "ifconfig.me" "ident.me") # IP查询接口 IPV4 IPV6兼容
+# https://github.com/ihmily/ip-info-api
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.me" "ip.im" "api64.ipify.org" "curlmyip.net" "getip.cc" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.tyk.nu" "ping0.cc" "wgetip.com") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
 declare -A IPINFO
@@ -77,6 +78,14 @@ curl() {
             sleep 1
         fi
     done
+}
+
+bootstrap_assets() {
+    # https://github.com/ip2location/ip2location-iata-icao
+    IATAICAO_DB="$(curl -Ls https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
+
+    # https://github.com/lmc999/RegionRestrictionCheck
+    MEDIA_COOKIE="$(curl -Ls https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
 }
 
 is_in_china() {
