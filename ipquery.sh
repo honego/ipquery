@@ -36,8 +36,7 @@ TEMP_DIR="$(mktemp -d 2> /dev/null)"
 
 ## 定义数组
 
-# IP查询接口 IPV4 IPV6兼容 https://github.com/ihmily/ip-info-api
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.me" "ip.im" "api64.ipify.org" "curlmyip.net" "getip.cc" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.tyk.nu" "wgetip.com")
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
 declare -A IPINFO
