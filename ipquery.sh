@@ -505,8 +505,8 @@ show_head() {
     center_padding "${SCRIPT_HEAD[gitRepo]}" 72
     echo -en "\r$PADDING$(_underline "${SCRIPT_HEAD[gitRepo]}")\n" # 打印 Github 地址
     center_padding "${SCRIPT_HEAD[bash]}" 72
-    echo -en "\r$PADDING${SCRIPT_HEAD[bash]}\n"                                                 # 打印执行命令
-    echo -en "\r${SCRIPT_HEAD[timeIndent]}${SCRIPT_HEAD[reportTime]} ${SCRIPT_HEAD[version]}\n" # 打印报告时间 脚本时间
+    echo -en "\r$PADDING${SCRIPT_HEAD[bash]}\n"                                                    # 打印执行命令
+    echo -en "\r${SCRIPT_HEAD[timeIndent]}${SCRIPT_HEAD[reportTime]}    ${SCRIPT_HEAD[version]}\n" # 打印报告时间 脚本时间
     echo -en "\r$(printf '%72s' "" | tr ' ' '#')\n"
 }
 
