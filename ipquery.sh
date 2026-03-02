@@ -96,20 +96,80 @@ is_in_china() {
     [ "$COUNTRY" = CN ]
 }
 
+# 合法 IPV4 地址校验
+is_legal_ipv4() {
+    local IP IFS
+    local -a OCTETS
+
+    IP="$1"
+    IFS=.
+
+    # 基本格式校验
+    [[ $IP =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+
+    read -r -a OCTETS <<< "$IP"
+
+    # 每一段必须是 0–255
+    for o in "${OCTETS[@]}"; do
+        ((o >= 0 && o <= 255)) || return 1
+    done
+
+    return 0
+}
+
+# 判断是否为公网 IPV4 排除内网 / 保留地址
+is_valid_ipv4() {
+    local IP IFS
+    local -a OCTETS
+
+    IP="$1"
+    IFS=.
+
+    read -r -a OCTETS <<< "$IP"
+
+    # RFC1918 私网
+    [ "${OCTETS[0]}" -eq 10 ] && return 1
+    [ "${OCTETS[0]}" -eq 172 ] && [ "${OCTETS[1]}" -ge 16 ] && [ "${OCTETS[1]}" -le 31 ] && return 1
+    [ "${OCTETS[0]}" -eq 192 ] && [ "${OCTETS[1]}" -eq 168 ] && return 1
+
+    # 回环地址 127.0.0.0/8
+    [ "${OCTETS[0]}" -eq 127 ] && return 1
+
+    # 链路本地 169.254.0.0/16
+    [ "${OCTETS[0]}" -eq 169 ] && [ "${OCTETS[1]}" -eq 254 ] && return 1
+
+    # 0.0.0.0/8
+    [ "${OCTETS[0]}" -eq 0 ] && return 1
+
+    # 广播地址
+    [ "$IP" = "255.255.255.255" ] && return 1
+
+    # 文档测试地址
+    [ "${OCTETS[0]}" -eq 192 ] && [ "${OCTETS[1]}" -eq 0 ] && [ "${OCTETS[2]}" -eq 2 ] && return 1
+    [ "${OCTETS[0]}" -eq 198 ] && [ "${OCTETS[1]}" -eq 51 ] && [ "${OCTETS[2]}" -eq 100 ] && return 1
+    [ "${OCTETS[0]}" -eq 203 ] && [ "${OCTETS[1]}" -eq 0 ] && [ "${OCTETS[2]}" -eq 113 ] && return 1
+
+    # 多播 / 保留地址 224.0.0.0/4
+    [ "${OCTETS[0]}" -ge 224 ] && return 1
+
+    return 0
+}
+
 get_ipv4() {
     local RESPONSE
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
         RESPONSE="$(curl -Ls -4 "$i" 2> /dev/null || true)"
-        if [[ $? -eq 0 && ! $RESPONSE =~ error && -n $RESPONSE ]]; then
+        if [ -n "$RESPONSE" ] && is_legal_ipv4 "$RESPONSE" && is_valid_ipv4 "$RESPONSE"; then
             IPV4_ADDRESS="$RESPONSE"
+            IPV4_MASKED="$(awk -F'.' 'NF==4{print $1"."$2".*.*"} NF!=4{print ""}' <<< "$IPV4_ADDRESS")" # IPV4 模糊处理
             break
         fi
     done
 }
 
 # 准备程序运行基础命令
-check_cmd() {
+install_runCmd() {
     curl -L https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
 }
 
