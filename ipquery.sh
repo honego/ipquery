@@ -34,8 +34,10 @@ _italic() { printf "\033[3m%b\033[23m\n" "$*"; }
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
 : "${OUT_LANG:="zh-CN"}" # 默认输出中文
 
-## 定义数组
+# 终止信号捕获
+trap 'rm -rf "${TEMP_DIR:?}" > /dev/null 2>&1' SIGINT SIGTERM EXIT
 
+## 定义数组
 declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me") # IP查询接口 IPV4 IPV6兼容
 
 declare -A MAXMIND
@@ -49,6 +51,7 @@ SHOW_TYPE[hosting]="$(_red_bg "机房")"
 SHOW_TYPE[isp]="$(_green_bg "家宽")"
 SHOW_TYPE[other]="$(_yellow_bg "其他")"
 
+## 函数库
 clear() {
     [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
 }
@@ -77,14 +80,6 @@ curl() {
             sleep 1
         fi
     done
-}
-
-bootstrap_assets() {
-    # https://github.com/ip2location/ip2location-iata-icao
-    IATAICAO_DB="$(curl -Ls https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
-
-    # https://github.com/lmc999/RegionRestrictionCheck
-    MEDIA_COOKIE="$(curl -Ls https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
 }
 
 is_in_china() {
@@ -222,7 +217,7 @@ get_ipv4() {
     local RESPONSE
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
-        RESPONSE="$(curl -Ls -4 "$i" 2> /dev/null || true)"
+        RESPONSE="$(curl -L -4 "$i" 2> /dev/null || true)"
         if [ -n "$RESPONSE" ] && is_legal_ipv4 "$RESPONSE" && is_valid_ipv4 "$RESPONSE"; then
             IPV4_ADDRESS="$RESPONSE"
             IPV4_MASKED="$(awk -F'.' 'NF==4{print $1"."$2".*.*"} NF!=4{print ""}' <<< "$IPV4_ADDRESS")" # IPV4 模糊处理
@@ -235,7 +230,7 @@ get_ipv6() {
     local RESPONSE
 
     for i in "${IPAPI_ENDPOINT[@]}"; do
-        RESPONSE="$(curl -Ls -6 "$i" 2> /dev/null || true)"
+        RESPONSE="$(curl -L -6 "$i" 2> /dev/null || true)"
         if [ -n "$RESPONSE" ] && is_legal_ipv6 "$RESPONSE" && is_valid_ipv6 "$RESPONSE"; then
             IPV6_ADDRESS="$RESPONSE"
             IPV6_MASKED="$(printf '%s\n' "$IPV6_ADDRESS" | sed 's/^\([^:]*:[^:]*:[^:]*\).*/\1:*:*:*:*:*/')" # IPV6 模糊处理
@@ -247,6 +242,14 @@ get_ipv6() {
 # 准备程序运行基础命令
 install_runCmd() {
     curl -L https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-linux-amd64 -o "$TEMP_DIR/jq" > /dev/null 2>&1 && chmod +x "$TEMP_DIR/jq" > /dev/null 2>&1
+}
+
+bootstrap_deps() {
+    # https://github.com/ip2location/ip2location-iata-icao
+    IATAICAO_DB="$(curl -L https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
+
+    # https://github.com/lmc999/RegionRestrictionCheck
+    MEDIA_COOKIE="$(curl -L https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
 }
 
 # 大写转换
@@ -408,6 +411,9 @@ ipinfo_db() {
     IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r '.[] | select(.["alpha-2"] == $code) | .name' <<< "$ISO3166")"
 }
 
-# https://www.nodeseek.com/post-627595-1
-# curl -L -4 https://abiding-cistern-488411-j3.uc.r.appspot.com
-# curl -L -6 https://abiding-cistern-488411-j3.uc.r.appspot.com
+## 主程序运行 1/3
+clear
+get_ipv4
+get_ipv6
+install_runCmd
+bootstrap_deps
