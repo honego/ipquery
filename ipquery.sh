@@ -69,7 +69,7 @@ curl() {
     # centos7 curl 不支持 --retry-connrefused --retry-all-errors 因此手动 retry
 
     for ((i = 1; i <= 5; i++)); do
-        if curl --connect-timeout 10 --fail --insecure "$@"; then
+        if command curl --connect-timeout 10 --fail --insecure "$@"; then
             return
         else
             RET="$?"
@@ -246,10 +246,9 @@ install_runCmd() {
 
 bootstrap_deps() {
     # https://github.com/ip2location/ip2location-iata-icao
-    IATAICAO_DB="$(curl -L https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
-
+    IATAICAO_DB="$(curl -Ls https://fastly.jsdelivr.net/gh/ip2location/ip2location-iata-icao@master/iata-icao.csv 2> /dev/null || true)"
     # https://github.com/lmc999/RegionRestrictionCheck
-    MEDIA_COOKIE="$(curl -L https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
+    MEDIA_COOKIE="$(curl -Ls https://fastly.jsdelivr.net/gh/lmc999/RegionRestrictionCheck@main/cookies 2> /dev/null || true)"
 }
 
 # 大写转换
