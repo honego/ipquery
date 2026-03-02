@@ -40,7 +40,7 @@ trap 'rm -rf "${TEMP_DIR:?}" > /dev/null 2>&1' SIGINT SIGTERM EXIT
 declare -a CURL_OPTS=()
 
 # IP查询接口 IPV4 IPV6兼容
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "ping0.cc" "getip.cc" "wgetip.com" "test.ipw.cn")
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "getip.cc" "wgetip.com" "test.ipw.cn")
 
 declare -A MAXMIND
 declare -A IPINFO
