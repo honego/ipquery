@@ -26,8 +26,11 @@ _red_bg() { printf "\033[41m\033[37m\033[1m%b\033[0m\n" "$*"; }
 _green_bg() { printf "\033[42m\033[37m\033[1m%b\033[0m\n" "$*"; }
 _yellow_bg() { printf "\033[43m\033[37m\033[1m%b\033[0m\n" "$*"; }
 
-# 斜体输出
-_italic() { printf "\033[3m%b\033[23m\n" "$*"; }
+_bold() { printf "\033[1m%b\033[0m" "$*"; }           # 白色加粗
+_bold_cyan() { printf "\033[1;36m%b\033[0m\n" "$*"; } # 青色加粗
+
+_italic() { printf "\033[3m%b\033[23m\n" "$*"; }   # 斜体输出
+_underline() { printf "\033[4m%b\033[0m\n" "$*"; } # 下划线
 
 ## 各变量默认值
 TEMP_DIR="$(mktemp -d 2> /dev/null)"
@@ -47,7 +50,14 @@ declare -A SCRIPT_HEAD
 declare -A MAXMIND
 declare -A IPINFO
 
+SCRIPT_HEAD[title]="IP质量体检报告: "
 SCRIPT_HEAD[lenTitle]="16" # 中文环境下标题长度为16个字符
+SCRIPT_HEAD[gitRepo]="https://github.com/honeok/ipquery"
+SCRIPT_HEAD[bash]="bash <(curl -Ls ${SCRIPT_HEAD[gitRepo]}/raw/master/ipquery.sh)"
+SCRIPT_HEAD[timeIndent]="$(printf '%8s' '')" # 时间行缩进
+SCRIPT_HEAD[rawTime]="$(TZ="Asia/Shanghai" date +"%Y-%m-%d %H:%M:%S %Z")"
+SCRIPT_HEAD[reportTime]="报告时间: ${SCRIPT_HEAD[rawTime]}"
+SCRIPT_HEAD[version]="脚本版本: $SCRIPT_VERSION"
 
 declare -A SHOW_TYPE
 
@@ -301,12 +311,18 @@ to_lower() {
 
 # 获取文本视觉宽度
 visual_width() {
-    local STRING NON_ASCII
+    local STRING CHARSET LC_ALL NON_ASCII
 
     STRING="$1"
-    # 将标准 ASCII 字符 (空格到 ~ 符号 含制表符) 全部剔除 剩下的全是宽字符
-    NON_ASCII="${STRING//[ -~$'\t']/}"
-    echo $((${#STRING} + ${#NON_ASCII})) # 总字符数 + 宽字符数 = 终端视觉宽度
+    CHARSET="$(locale charmap 2> /dev/null || echo "UTF-8")" # 获取当前终端 / 系统的字符集编码
+
+    if [[ "${CHARSET^^}" == *"GB"* ]]; then
+        LC_ALL=C
+        echo "${#STRING}"
+    else
+        NON_ASCII="${STRING//[ -~$'\t']/}"
+        echo $((${#STRING} + ${#NON_ASCII}))
+    fi
 }
 
 # 生成居中空格
@@ -478,22 +494,40 @@ ipinfo_db() {
     IPINFO[abuseCountry]="$("$TEMP_DIR/jq" --arg code "${IPINFO[abuseCountryCode]}" -r ".[] | select(.[\"alpha-2\"] == \$code) | .name" <<< "$ISO3166")"
 }
 
-# shellcheck disable=all
 show_head() {
-    echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
-    center_padding "$(printf '%*s' "${SCRIPT_HEAD[lenTitle]}" '')$IPhide" 72
-    echo -en "\r$PADDING$Font_B${shead[title]}$Font_Cyan$IPhide$Font_Suffix\n"
-    center_padding "${shead[git]}" 72
-    echo -en "\r$PADDING$Font_U${shead[git]}$Font_Suffix\n"
-    center_padding "${shead[bash]}" 72
-    echo -en "\r$PADDING${shead[bash]}\n"
-    echo -en "\r${shead[ptime]}${shead[time]}  ${shead[ver]}\n"
-    echo -en "\r$(printf '%72s' | tr ' ' '#')\n"
+    local IP_MASKED
+
+    IP_MASKED="$1"
+
+    echo -en "\r$(printf '%72s' "" | tr ' ' '#')\n"
+    center_padding "$(printf '%*s' "${SCRIPT_HEAD[lenTitle]}" '')$IP_MASKED" 72
+    echo -en "\r$PADDING$(_bold "${SCRIPT_HEAD[title]} $(_bold_cyan "$IP_MASKED")")\n" # 打印 IP 质量体检报告
+    center_padding "${SCRIPT_HEAD[gitRepo]}" 72
+    echo -en "\r$PADDING$(_underline "${SCRIPT_HEAD[gitRepo]}")\n" # 打印 Github 地址
+    center_padding "${SCRIPT_HEAD[bash]}" 72
+    echo -en "\r$PADDING${SCRIPT_HEAD[bash]}\n"                                                 # 打印执行命令
+    echo -en "\r${SCRIPT_HEAD[timeIndent]}${SCRIPT_HEAD[reportTime]} ${SCRIPT_HEAD[version]}\n" # 打印报告时间 脚本时间
+    echo -en "\r$(printf '%72s' "" | tr ' ' '#')\n"
 }
 
 run_check() {
+    local CHECK_IP IP_FAMILY DISPLAY_IP
+
+    # 数据库检测
     maxmind_db "$1"
     ipinfo_db "$1"
+
+    # 结果打印
+    case "$2" in
+    4)
+        DISPLAY_IP="$IPV4_MASKED"
+        show_head "$DISPLAY_IP"
+        ;;
+    6)
+        DISPLAY_IP="$IPV6_MASKED"
+        show_head "$DISPLAY_IP"
+        ;;
+    esac
 }
 
 ## 解析命令行参数
@@ -501,10 +535,6 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
     -h | --help)
         usage_and_exit
-        ;;
-    --debug)
-        set -x
-        shift
         ;;
     -4 | --ipv4)
         CHECK_IPV4=1
