@@ -43,7 +43,10 @@ trap 'rm -rf "${TEMP_DIR:?}" > /dev/null 2>&1' SIGINT SIGTERM EXIT
 declare -a CURL_OPTS=()
 
 # IP查询接口 IPV4 IPV6兼容
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.me" "ip.im" "api64.ipify.org" "icanhazip.com" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "wgetip.com" "test.ipw.cn")
+declare -a IPAPI_ENDPOINT=("ip.haiok.de" "ip.sb" "ip.gs" "ip.im" "ip.me" "icanhazip.com" "ident.me" "api64.ipify.org"
+    "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "i-p.show" "myip.wtf" "wtfismyip.com" "wgetip.com"
+    "ip.zerosla.net" "ping0.cc" "api.seeip.org"
+    "test.ipw.cn" "ifconfig.cc")
 
 declare -A SCRIPT_HEAD
 
