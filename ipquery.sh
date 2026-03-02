@@ -117,6 +117,18 @@ is_legal_ipv4() {
     return 0
 }
 
+# 合法 IPv6 地址校验
+is_legal_ipv6() {
+    local IP
+
+    IP="$1"
+
+    # 使用内核解析 iproute2
+    ip -6 address show to "$IP" > /dev/null 2>&1 && return 0
+
+    return 1
+}
+
 # 判断是否为公网 IPV4 排除内网 / 保留地址
 is_valid_ipv4() {
     local IP IFS
@@ -155,6 +167,49 @@ is_valid_ipv4() {
     return 0
 }
 
+# 判断是否为公网 IPv6 (排除 ULA / 本地 / 保留)
+is_valid_ipv6() {
+    local IP
+
+    IP="$1"
+
+    # 回环 ::1/128
+    [ "$IP" = "::1" ] && return 1
+
+    # 未指定地址 ::/128
+    [ "$IP" = "::" ] && return 1
+
+    # Link local fe80::/10
+    case "$IP" in
+    fe8*:* | fe9*:* | fea*:* | feb*:*)
+        return 1
+        ;;
+    esac
+
+    # ULA fc00::/7
+    case "$IP" in
+    fc*:* | fd*:*)
+        return 1
+        ;;
+    esac
+
+    # 文档地址 2001:db8::/32
+    case "$IP" in
+    2001:db8:*)
+        return 1
+        ;;
+    esac
+
+    # 多播 ff00::/8
+    case "$IP" in
+    ff*:*)
+        return 1
+        ;;
+    esac
+
+    return 0
+}
+
 get_ipv4() {
     local RESPONSE
 
@@ -163,6 +218,19 @@ get_ipv4() {
         if [ -n "$RESPONSE" ] && is_legal_ipv4 "$RESPONSE" && is_valid_ipv4 "$RESPONSE"; then
             IPV4_ADDRESS="$RESPONSE"
             IPV4_MASKED="$(awk -F'.' 'NF==4{print $1"."$2".*.*"} NF!=4{print ""}' <<< "$IPV4_ADDRESS")" # IPV4 模糊处理
+            break
+        fi
+    done
+}
+
+get_ipv6() {
+    local RESPONSE
+
+    for i in "${IPAPI_ENDPOINT[@]}"; do
+        RESPONSE="$(curl -Ls -6 "$i" 2> /dev/null || true)"
+        if [ -n "$RESPONSE" ] && is_legal_ipv6 "$RESPONSE" && is_valid_ipv6 "$RESPONSE"; then
+            IPV6_ADDRESS="$RESPONSE"
+            IPV6_MASKED="$(awk -F':' 'NF>=2{print $1":"$2":"$3":*:*:*:*:*"} NF<2{print ""}' <<< "$IPV6_ADDRESS")" # IPV6 模糊处理
             break
         fi
     done
