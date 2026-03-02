@@ -17,7 +17,7 @@ set -eE
 # shellcheck disable=SC2034
 readonly SCRIPT_VERSION='v1.0.0'
 
-# 自定义字体彩色
+## 自定义字体彩色
 _red() { printf "\033[31m%b\033[0m\n" "$*"; }
 _green() { printf "\033[32m%b\033[0m\n" "$*"; }
 _yellow() { printf "\033[33m%b\033[0m\n" "$*"; }
@@ -29,6 +29,10 @@ _yellow_bg() { printf "\033[43m\033[37m\033[1m%b\033[0m\n" "$*"; }
 
 # 斜体输出
 _italic() { printf "\033[3m%b\033[23m\n" "$*"; }
+
+## 各变量默认值
+TEMP_DIR="$(mktemp -d 2> /dev/null)"
+: "${OUT_LANG:="zh-CN"}" # 默认输出中文
 
 ## 定义数组
 
@@ -44,10 +48,6 @@ SHOW_TYPE[education]="$(_yellow_bg "教育")"
 SHOW_TYPE[hosting]="$(_red_bg "机房")"
 SHOW_TYPE[isp]="$(_green_bg "家宽")"
 SHOW_TYPE[other]="$(_yellow_bg "其他")"
-
-# 各变量默认值
-TEMP_DIR="$(mktemp -d 2> /dev/null)"
-: "${OUT_LANG:="zh-CN"}" # 默认输出中文
 
 clear() {
     [ -t 1 ] && tput clear 2> /dev/null || printf "\033[2J\033[H" || command clear
