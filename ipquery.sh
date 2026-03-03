@@ -44,7 +44,7 @@ declare -a CURL_OPTS=()
 
 # IP查询接口 IPV4 IPV6兼容
 # 611611.best 基于 Cloudflare Snippets
-declare -a IPAPI_ENDPOINT=("611611.best" "icanhazip.com" "checkip.global.api.aws" "api.myip.la" "ip.hetzner.com" "ip.sb" "ip.gs" "ip.im" "ip.me"
+declare -a IPAPI_ENDPOINT=("611611.best" "icanhazip.com" "checkip.global.api.aws" "ip.hetzner.com" "ip.sb" "ip.gs" "ip.im" "ip.me" "api.myip.la"
     "api64.ipify.org" "checkip.dedyn.io" "ident.me" "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "i-p.show" "wgetip.com"
     "ip.wtf" "myip.wtf" "wtfismyip.com" "myip.cam" "ip.zerosla.net" "ping0.cc" "api.seeip.org" "myip.biturl.top" "ip.tyk.nu" "simpip.com")
 
