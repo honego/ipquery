@@ -1,13 +1,29 @@
 ---
 services:
+  cloudflare:
+    image: cloudflare/cloudflared
+    container_name: maxmind_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token <Your-cloudflare-tunnel-token>
+    networks:
+      - maxmind
+    depends_on:
+      maxmind:
+        condition: service_started
+
   maxmind:
     image: honeok/maxmind
     container_name: maxmind
     restart: unless-stopped
-    ports:
-      - 8080:8080
+    # ports:
+    #   - 127.0.0.1:8080:8080
     environment:
       - TZ=Asia/Shanghai
     volumes:
       - $PWD/db:/app/db
-    network_mode: bridge
+    networks:
+      - maxmind
+
+networks:
+  maxmind:
+    driver: bridge
