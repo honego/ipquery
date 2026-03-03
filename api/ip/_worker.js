@@ -52,6 +52,11 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // 拦截图标请求
+    if (path === "/favicon.ico") {
+      return new Response(null, { status: 204 });
+    }
+
     // 提取通用变量
     const clientIP = request.headers.get("CF-Connecting-IP") || "127.0.0.1";
     const cf = request.cf || {};
