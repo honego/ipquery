@@ -43,7 +43,7 @@ trap 'rm -rf "${TEMP_DIR:?}" > /dev/null 2>&1' SIGINT SIGTERM EXIT
 declare -a CURL_OPTS=()
 
 # IP查询接口 IPV4 IPV6兼容
-declare -a IPAPI_ENDPOINT=("ip.haiok.de" "icanhazip.com" "ip.sb" "ip.gs" "ip.im" "ip.me" "api.myip.la" "ident.me" "i-p.show"
+declare -a IPAPI_ENDPOINT=("ip.iplen.de" "icanhazip.com" "ip.sb" "ip.gs" "ip.im" "ip.me" "api.myip.la" "ident.me" "i-p.show"
     "ifconfig.co" "ifconfig.es" "ifconfig.io" "ifconfig.me" "ip.network" "api64.ipify.org" "myip.wtf" "wtfismyip.com" "wgetip.com"
     "ip.zerosla.net" "ping0.cc" "api.seeip.org" "myip.biturl.top" "ip.tyk.nu")
 
@@ -424,7 +424,7 @@ maxmind_db() {
     local CHECK_IP RESPONSE
 
     CHECK_IP="$1"
-    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://maxmind.haiok.de/$CHECK_IP?lang=$OUT_LANG" 2> /dev/null || true)"
+    RESPONSE="$(curl "${CURL_OPTS[@]}" -Ls "https://maxmind.iplen.de/$CHECK_IP?lang=$OUT_LANG" 2> /dev/null || true)"
     [ -n "$RESPONSE" ] || RESPONSE=""
 
     MAXMIND[asn]="$("$TEMP_DIR/jq" -r '.asn' <<< "$RESPONSE")"
