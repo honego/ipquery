@@ -52,24 +52,9 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // 获取请求头中的 UA
-    const ua = request.headers.get("User-Agent");
-
-    // 处理 favicon 请求
+    // 拦截图标请求
     if (path === "/favicon.ico") {
-      if (!ua) {
-        return new Response(null, { status: 204 });
-      } else {
-        const svgIcon =
-          '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-live-view"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /><path d="M12 11l0 .01" /><path d="M12 18l-3.5 -5a4 4 0 1 1 7 0l-3.5 5" /></svg>';
-
-        return new Response(svgIcon, {
-          headers: {
-            "Content-Type": "image/svg+xml",
-            "Cache-Control": "public, max-age=86400",
-          },
-        });
-      }
+      return new Response(null, { status: 204 });
     }
 
     // 提取通用变量
