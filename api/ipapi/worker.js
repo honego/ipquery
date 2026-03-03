@@ -1,7 +1,7 @@
 const EMOJI_FLAG_UNICODE_STARTING_POSITION = 127397;
 
 // 国旗转换
-function getEmoji(countryCode) {
+function getFlag(countryCode) {
   const regex = new RegExp("^[A-Z]{2}$").test(countryCode);
   if (!countryCode || !regex) return undefined;
   try {
@@ -14,7 +14,7 @@ function getEmoji(countryCode) {
 }
 
 // 获取 Emoji 的 Unicode 字符串
-function getEmojiUnicode(countryCode) {
+function getFlagUnicode(countryCode) {
   const regex = new RegExp("^[A-Z]{2}$").test(countryCode);
   if (!countryCode || !regex) return undefined;
   try {
@@ -52,12 +52,21 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // 提取通用变量
+    const clientIP = request.headers.get("CF-Connecting-IP") || "127.0.0.1";
+    const cf = request.cf || {};
+
+    // 全局 CORS 头 确保前端直接 Fetch 不被拦截
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+    };
+
     // 根路径仅返回IP
     if (path === "/") {
-      const clientIP = request.headers.get("CF-Connecting-IP");
-      return new Response(clientIP, {
+      return new Response(clientIP + "\n", {
         headers: {
-          "Content-Type": "text/plain;charset=utf-8",
+          ...corsHeaders,
+          "Content-Type": "text/plain; charset=utf-8",
         },
       });
     }
@@ -65,31 +74,31 @@ export default {
     // JSON 返回详细信息
     if (path === "/json") {
       const data = {
-        ip: request.headers.get("CF-Connecting-IP"),
-        asn: request.cf.asn,
-        org: request.cf.asOrganization,
-        colo: request.cf.colo,
-        continent: request.cf.continent,
-        country: request.cf.country,
-        emoji: getEmoji(request.cf.country),
-        emoji_unicode: getEmojiUnicode(request.cf.country),
-        region: request.cf.region,
-        regionCode: request.cf.regionCode,
-        city: request.cf.city,
-        postalCode: request.cf.postalCode,
-        metroCode: request.cf.metroCode,
-        latitude: request.cf.latitude,
-        longitude: request.cf.longitude,
-        warp: getWarp(request.cf.asn),
-        offset: getOffset(request.cf.timezone),
-        timezone: request.cf.timezone,
+        ip: clientIP,
+        asn: cf.asn,
+        org: cf.asOrganization,
+        colo: cf.colo,
+        continent: cf.continent,
+        country: cf.country,
+        emoji: getFlag(cf.country),
+        emoji_unicode: getFlagUnicode(cf.country),
+        region: cf.region,
+        regionCode: cf.regionCode,
+        city: cf.city,
+        postalCode: cf.postalCode,
+        metroCode: cf.metroCode,
+        latitude: cf.latitude,
+        longitude: cf.longitude,
+        warp: getWarp(cf.asn),
+        offset: getOffset(cf.timezone),
+        timezone: cf.timezone,
       };
 
-      var dataJson = JSON.stringify(data, null, 2);
+      const dataJson = JSON.stringify(data, null, 2);
       return new Response(dataJson, {
         headers: {
-          "Content-Type": "application/json;charset=utf-8",
-          "Access-Control-Allow-Origin": "*",
+          ...corsHeaders,
+          "Content-Type": "application/json; charset=utf-8",
         },
       });
     }
